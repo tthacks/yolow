@@ -39,6 +39,7 @@ import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.Menu;
@@ -49,16 +50,12 @@ import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
-    private  SensorDatabase sensorDb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         //set view
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //init device database
-        sensorDb = SensorDatabase.getInstance(getApplicationContext());
-        //clearTable();
         //init button listeners
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
         scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivity.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
@@ -79,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
             case REQUEST_START_BLE_SCAN:
                 BluetoothDevice selectedDevice= data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
                 if (selectedDevice != null) {
-
                     //add it to the other list - their code
                     ((MainActivityFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
                 }
@@ -107,22 +103,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private void clearTable() {
-        AppExecutors.getInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        sensorDb.clearAllTables();
-                    }
-                });
-            }
-        });
-
-
     }
 
 }

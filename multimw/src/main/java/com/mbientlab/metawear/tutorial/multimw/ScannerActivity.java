@@ -38,6 +38,7 @@ import android.os.Bundle;
 
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment.ScannerCommunicationBus;
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 
 import java.util.UUID;
 

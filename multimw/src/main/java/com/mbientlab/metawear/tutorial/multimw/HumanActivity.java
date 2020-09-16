@@ -2,32 +2,36 @@ package com.mbientlab.metawear.tutorial.multimw;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 
-import java.util.Collections;
-import java.util.LinkedList;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
+
 import java.util.List;
 
 public class HumanActivity extends AppCompatActivity {
 
     private boolean isLocked, isRecording;
+    private RecyclerView recycler;
+    private NameDevicesAdapter adapter;
+    private SensorDatabase sensorDb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_human);
 
-        SensorDatabase sensorDb = SensorDatabase.getInstance(this);
         //TODO: create list of connected devices
-        ListView deviceList = findViewById(R.id.connected_devices);
+        recycler = findViewById(R.id.device_list_human);
+        recycler.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new NameDevicesAdapter(this);
+        recycler.setAdapter(adapter);
+        sensorDb = SensorDatabase.getInstance(getApplicationContext());
 
         //button controls
         isLocked = false;
@@ -71,6 +75,29 @@ public class HumanActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        retrieveSensors();
+    }
+
+
+    private void retrieveSensors() {
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        adapter.setSensorList(sensors);
+                    }
+                });
+            }
+        });
     }
 
 }

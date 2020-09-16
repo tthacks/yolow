@@ -42,52 +42,47 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ListView;
 
 import com.mbientlab.metawear.AsyncDataProducer;
-import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.RouteBuilder;
-import com.mbientlab.metawear.builder.RouteComponent;
-import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
-import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Switch;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 import java.util.HashMap;
+import java.util.List;
 
 import bolts.Capture;
 import bolts.Continuation;
-import bolts.Task;
 
 /**
  * A placeholder fragment containing a simple view.
  */
 public class MainActivityFragment extends Fragment implements ServiceConnection {
-    private final HashMap<DeviceState, MetaWearBoard> stateToBoards;
+    private final HashMap<SensorDevice, MetaWearBoard> stateToBoards;
     private BtleService.LocalBinder binder;
     private SensorDatabase sensorDb;
-
-    private ConnectedDevicesAdapter connectedDevices= null;
+    private RecyclerView recyclerView;
+    private ConnectedDevicesAdapter adapter;
 
     public MainActivityFragment() {
-        stateToBoards = new HashMap<>();
+        stateToBoards = new HashMap<SensorDevice, MetaWearBoard>();
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        sensorDb = SensorDatabase.getInstance(this.getContext());
-
         Activity owner= getActivity();
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
     }
@@ -96,30 +91,30 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
     @Override
     public void onDestroy() {
         super.onDestroy();
-
         getActivity().getApplicationContext().unbindService(this);
     }
 
 
     public void addNewDevice(BluetoothDevice btDevice) {
-        final DeviceState newDeviceState= new DeviceState(btDevice);
-        final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
 
-        newDeviceState.connecting= true;
-        connectedDevices.add(newDeviceState);
+        //TODO: fix sensor collision issues on app failure
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, 10, 0, 0);
+        final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
         addToDb(newDeviceState);
+        retrieveSensors();
         stateToBoards.put(newDeviceState, newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
 
-        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {connectedDevices.remove(newDeviceState);
-        removeFromDb(newDeviceState);
-        }));
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {removeFromDb(newDeviceState); retrieveSensors();}
+        ));
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
-                connectedDevices.notifyDataSetChanged();
+                System.out.println("CONNECTION SUCCESSFUL");
+                updateConnectionStatusInDb(newDeviceState);
+                retrieveSensors();
             });
 
             final Accelerometer accelerometer = newBoard.getModule(Accelerometer.class);
@@ -136,25 +131,25 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             return orientation.addRouteAsync(source -> source.stream((data, env) -> {
                 getActivity().runOnUiThread(() -> {
                    //  newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
-                    connectedDevices.notifyDataSetChanged();
+//                    connectedDevices.notifyDataSetChanged();
                 });
             }));
         }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
             getActivity().runOnUiThread(() -> {
                 // newDeviceState.pressed = data.value(Boolean.class);
-                connectedDevices.notifyDataSetChanged();
+//                connectedDevices.notifyDataSetChanged();
             });
         }))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
                 if (!newBoard.isConnected()) {
-                    getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState));
-                    removeFromDb(newDeviceState);
+                    getActivity().runOnUiThread(() -> removeFromDb(newDeviceState));
+                    retrieveSensors();
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                     newBoard.tearDown();
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
-                        connectedDevices.remove(newDeviceState);
                         removeFromDb(newDeviceState);
+                        retrieveSensors();
                         return null;
                     });
                 }
@@ -168,36 +163,19 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        connectedDevices= new ConnectedDevicesAdapter(getActivity(), R.id.sensor_status_layout);
-        connectedDevices.setNotifyOnChange(true);
+        adapter = new ConnectedDevicesAdapter(getActivity());
         setRetainInstance(true);
         return inflater.inflate(R.layout.fragment_main, container, false);
     }
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        ListView connectedDevicesView= view.findViewById(R.id.connected_devices);
-        connectedDevicesView.setAdapter(connectedDevices);
-        connectedDevicesView.setOnItemLongClickListener((parent, view1, position, id) -> {
-            DeviceState current= connectedDevices.getItem(position);
-            final MetaWearBoard selectedBoard= stateToBoards.get(current);
+        recyclerView = view.findViewById(R.id.connected_devices);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
+        recyclerView.setAdapter(adapter);
+        sensorDb = SensorDatabase.getInstance(this.getContext());
 
-            Accelerometer accelerometer = selectedBoard.getModule(Accelerometer.class);
-            accelerometer.stop();
-            if (accelerometer instanceof AccelerometerBosch) {
-                ((AccelerometerBosch) accelerometer).orientation().stop();
-            } else {
-                ((AccelerometerMma8452q) accelerometer).orientation().stop();
-            }
-
-            selectedBoard.tearDown();
-            selectedBoard.getModule(Debug.class).disconnectAsync();
-
-            connectedDevices.remove(current);
-            removeFromDb(current);
-            return false;
-        });
-    }
+           }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
@@ -209,23 +187,50 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
     }
 
-    private void removeFromDb(DeviceState bt) {
-        bt.btDevice.getAddress();
+    @Override
+    public void onResume() {
+        super.onResume();
+        retrieveSensors();
+    }
+
+    private void retrieveSensors() {
         AppExecutors.getInstance().diskIO().execute(new Runnable() {
             @Override
             public void run() {
-                sensorDb.sensorDao().deleteSensorById(bt.btDevice.getAddress());
+                final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        adapter.setSensorList(sensors);
+                    }
+                });
             }
         });
     }
 
-    private void addToDb(DeviceState bt) {
-        bt.btDevice.getAddress();
+    private void removeFromDb(SensorDevice s) {
         AppExecutors.getInstance().diskIO().execute(new Runnable() {
             @Override
             public void run() {
-                SensorDevice newSensor = new SensorDevice(bt.btDevice.getAddress(), bt.btDevice.getName(), 10, 0, 0);
-                sensorDb.sensorDao().insertSensor(newSensor);
+                sensorDb.sensorDao().deleteSensor(s);
+            }
+        });
+    }
+
+    private void addToDb(SensorDevice s) {
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                sensorDb.sensorDao().insertSensor(s);
+            }
+        });
+    }
+
+    private void updateConnectionStatusInDb(SensorDevice s) {
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                sensorDb.sensorDao().updateSensorConnectionStatus(s.connecting, s.uid);
             }
         });
     }

@@ -32,8 +32,8 @@
         android:layout_height="500dp"
         android:orientation="horizontal">
 
-        <ListView
-            android:id="@+id/connected_devices"
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/device_list_human"
             android:layout_width="142dp"
             android:layout_height="476dp"
             android:layout_alignParentStart="false"
