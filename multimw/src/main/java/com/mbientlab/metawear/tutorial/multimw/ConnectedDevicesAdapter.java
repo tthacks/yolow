@@ -32,7 +32,6 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.content.Context;
-import android.support.design.widget.TextInputEditText;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -41,15 +40,14 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.RadioGroup;
 import android.widget.TextView;
-
-import java.util.HashMap;
 
 /**
  * Created by etsai on 5/22/2016.
  */
 public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
+
+    SensorDatabase sensorDb;
     public ConnectedDevicesAdapter(Context context, int resource) {
         super(context, resource);
     }
@@ -76,9 +74,27 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
         }
 
         DeviceState state= getItem(position);
-        viewHolder.deviceName.setText(state.getFriendlyName());
+        // SensorDevice s = getSensorFromDb();
+        //viewHolder.deviceName.setText(s.friendlyName);
+        viewHolder.deviceName.addTextChangedListener(new TextWatcher() {
+
+            public void afterTextChanged(Editable s) {
+            }
+
+            public void beforeTextChanged(CharSequence s, int start,
+                                          int count, int after) {
+            }
+
+            public void onTextChanged(CharSequence s, int start,
+                                      int before, int count) {
+//                SensorDevice s = getSensorFromId(state.btDevice.getAddress());
+            }
+        });
+
+
+
         viewHolder.deviceAddress.setText(state.btDevice.getAddress());
-        viewHolder.total_dur.setText("" + state.getTotalDuration());
+        viewHolder.total_dur.setText("");
 
         if (state.connecting) {
             viewHolder.connectingProgress.setVisibility(View.VISIBLE);
@@ -97,6 +113,15 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
         return convertView;
     }
 
+//    private String getSensorFromDb(String uid ) {
+//            AppExecutors.getInstance().diskIO().execute(new Runnable() {
+//                @Override
+//                public void run() {
+//                    SensorDevice s = sensorDb.sensorDao().getSensorById(uid);
+//                }
+//            });
+//    }
+
     private class ViewHolder {
         TextView deviceAddress, connectingText;
         EditText deviceName, total_dur, on_dur, off_dur;
@@ -109,12 +134,6 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             add(newState);
         }
         else {
-//            DeviceState current = getItem(pos);
-//            current.friendlyName = newState.friendlyName;
-//            current.totalDuration = newState.totalDuration;
-//            current.offDuration = newState.offDuration;
-//            current.onDuration = newState.onDuration;
-//            notifyDataSetChanged();
         }
     }
 }

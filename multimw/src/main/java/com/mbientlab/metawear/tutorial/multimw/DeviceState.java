@@ -38,29 +38,17 @@ import android.bluetooth.BluetoothDevice;
  */
 class DeviceState {
     final BluetoothDevice btDevice;
-    String friendlyName;
-    int totalDuration, onDuration, offDuration;
     boolean connecting;
 
     DeviceState(BluetoothDevice btDevice) {
         this.btDevice= btDevice;
         this.connecting = true;
-        this.totalDuration = 10;
-        this.friendlyName = btDevice.getAddress();
     }
 
     @Override
     public boolean equals(Object obj) {
         return (obj == this) ||
                 ((obj instanceof DeviceState) && btDevice.equals(((DeviceState) obj).btDevice));
-    }
-
-    public int getTotalDuration() {
-        return totalDuration;
-    }
-
-    public String getFriendlyName() {
-        return friendlyName;
     }
 
 

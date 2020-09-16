@@ -75,6 +75,7 @@ import bolts.Task;
 public class MainActivityFragment extends Fragment implements ServiceConnection {
     private final HashMap<DeviceState, MetaWearBoard> stateToBoards;
     private BtleService.LocalBinder binder;
+    private SensorDatabase sensorDb;
 
     private ConnectedDevicesAdapter connectedDevices= null;
 
@@ -85,6 +86,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        sensorDb = SensorDatabase.getInstance(this.getContext());
 
         Activity owner= getActivity();
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
@@ -105,12 +107,15 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
         newDeviceState.connecting= true;
         connectedDevices.add(newDeviceState);
+        addToDb(newDeviceState);
         stateToBoards.put(newDeviceState, newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
 
-        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {connectedDevices.remove(newDeviceState);
+        removeFromDb(newDeviceState);
+        }));
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
@@ -143,11 +148,13 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             if (task.isFaulted()) {
                 if (!newBoard.isConnected()) {
                     getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState));
+                    removeFromDb(newDeviceState);
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                     newBoard.tearDown();
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
                         connectedDevices.remove(newDeviceState);
+                        removeFromDb(newDeviceState);
                         return null;
                     });
                 }
@@ -187,6 +194,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             selectedBoard.getModule(Debug.class).disconnectAsync();
 
             connectedDevices.remove(current);
+            removeFromDb(current);
             return false;
         });
     }
@@ -199,5 +207,26 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
     @Override
     public void onServiceDisconnected(ComponentName name) {
 
+    }
+
+    private void removeFromDb(DeviceState bt) {
+        bt.btDevice.getAddress();
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                sensorDb.sensorDao().deleteSensorById(bt.btDevice.getAddress());
+            }
+        });
+    }
+
+    private void addToDb(DeviceState bt) {
+        bt.btDevice.getAddress();
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                SensorDevice newSensor = new SensorDevice(bt.btDevice.getAddress(), bt.btDevice.getName(), 10, 0, 0);
+                sensorDb.sensorDao().insertSensor(newSensor);
+            }
+        });
     }
 }

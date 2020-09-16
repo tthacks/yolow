@@ -65,4 +65,7 @@ dependencies {
     implementation 'com.mbientlab.bletoolbox:scanner:0.2.3'
     implementation "com.android.support:appcompat-v7:$rootProject.ext.supportLibVersion"
     implementation "com.android.support:design:$rootProject.ext.supportLibVersion"
+        def room_version = "2.2.5"
+        implementation "androidx.room:room-runtime:$room_version"
+        annotationProcessor "androidx.room:room-compiler:$room_version"
 }

@@ -42,11 +42,12 @@ import com.mbientlab.metawear.MetaWearBoard;
 import java.util.UUID;
 
 public class ScannerActivity extends AppCompatActivity implements ScannerCommunicationBus {
-    public static final String EXTRA_DEVICE= "com.mbientlab.metawear.tutorial.multimw.ScannerActivity.EXTRA_DEVICE";
+    public static final String EXTRA_DEVICE = "com.mbientlab.metawear.tutorial.multimw.ScannerActivity.EXTRA_DEVICE";
     private final static UUID[] SERVICE_UUIDS;
+    private SensorDatabase sensorDb;
 
     static {
-        SERVICE_UUIDS = new UUID[] {
+        SERVICE_UUIDS = new UUID[]{
                 MetaWearBoard.METAWEAR_GATT_SERVICE,
         };
     }
@@ -55,6 +56,8 @@ public class ScannerActivity extends AppCompatActivity implements ScannerCommuni
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scanner);
+
+        sensorDb = SensorDatabase.getInstance(getApplicationContext());
     }
 
     @Override
@@ -69,7 +72,7 @@ public class ScannerActivity extends AppCompatActivity implements ScannerCommuni
 
     @Override
     public void onDeviceSelected(BluetoothDevice device) {
-        Intent result= new Intent();
+        Intent result = new Intent();
         result.putExtra(EXTRA_DEVICE, device);
         setResult(RESULT_OK, result);
         finish();

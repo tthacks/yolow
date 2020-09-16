@@ -7,7 +7,14 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 public class HumanActivity extends AppCompatActivity {
 
@@ -17,10 +24,17 @@ public class HumanActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_human);
+
+        SensorDatabase sensorDb = SensorDatabase.getInstance(this);
+        //TODO: create list of connected devices
+        ListView deviceList = findViewById(R.id.connected_devices);
+
+        //button controls
         isLocked = false;
         isRecording = false;
         Button lock_button = findViewById(R.id.button_lock);
         Button record_button = findViewById(R.id.button_record);
+
 
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         goto_settings_button.setOnClickListener(new View.OnClickListener() {
@@ -58,4 +72,5 @@ public class HumanActivity extends AppCompatActivity {
         });
 
     }
+
 }
