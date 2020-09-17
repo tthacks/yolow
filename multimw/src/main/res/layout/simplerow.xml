@@ -10,8 +10,8 @@
         android:id="@+id/rowTextView"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:background="#8BC34A"
+        android:background="@drawable/rect_border"
         android:padding="10dp"
-        android:textSize="16sp"></TextView>
+        android:textSize="32sp"></TextView>
 
 </LinearLayout>
