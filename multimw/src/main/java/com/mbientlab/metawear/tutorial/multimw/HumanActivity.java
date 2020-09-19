@@ -60,11 +60,11 @@ public class HumanActivity extends AppCompatActivity {
                 if(isLocked) {
                     lock_button.setText("UNLOCK");
                     image_unlock.setVisibility(View.GONE);
-                    image_unlock.setVisibility(View.VISIBLE);
+                    image_lock.setVisibility(View.VISIBLE);
                 }
                 else {
                     lock_button.setText("LOCK");
-                    image_unlock.setVisibility(View.VISIBLE);
+                    image_lock.setVisibility(View.VISIBLE);
                     image_unlock.setVisibility(View.GONE);
                 }
             }
@@ -77,13 +77,13 @@ public class HumanActivity extends AppCompatActivity {
                     record_button.setText("STOP RECORDING");
                     lock_button.setEnabled(false);
                     image_unlock.setVisibility(View.GONE);
-                    image_unlock.setVisibility(View.VISIBLE);
+                    image_lock.setVisibility(View.VISIBLE);
                 }
                 else {
                     record_button.setText("START RECORDING");
                     lock_button.setEnabled(true);
                     image_unlock.setVisibility(View.VISIBLE);
-                    image_unlock.setVisibility(View.GONE);
+                    image_lock.setVisibility(View.GONE);
                 }
             }
         });
@@ -105,7 +105,6 @@ public class HumanActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-
                         adapter.setSensorList(sensors);
                     }
                 });

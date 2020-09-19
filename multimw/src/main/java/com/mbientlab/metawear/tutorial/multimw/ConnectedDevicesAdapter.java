@@ -32,6 +32,7 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.content.Context;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -39,10 +40,12 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
@@ -55,9 +58,11 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
 
     private Context context;
     private List<SensorDevice> sensorList;
+    private OnTestHapticClickListener testHapticClickListener;
 
-    public ConnectedDevicesAdapter(Context context) {
+    public ConnectedDevicesAdapter(Context context, OnTestHapticClickListener hapticClickListener) {
         this.context = context;
+        this.testHapticClickListener = hapticClickListener;
     }
 
     @NonNull
@@ -72,21 +77,32 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         sensorViewHolder.deviceName.setText(sensorList.get(i).friendlyName);
         sensorViewHolder.deviceAddress.setText(sensorList.get(i).uid);
         sensorViewHolder.total_dur.setText("" + sensorList.get(i).totalDuration);
+        sensorViewHolder.on_dur.setText("" + sensorList.get(i).onDuration);
+        sensorViewHolder.off_dur.setText("" + sensorList.get(i).offDuration);
+
+        sensorViewHolder.testHaptic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                testHapticClickListener.onTestHapticClick(sensorList.get(i));
+            }
+        });
 
 
         if (sensorList.get(i).connecting) {
             sensorViewHolder.connectingProgress.setVisibility(View.VISIBLE);
             sensorViewHolder.connectingText.setVisibility(View.VISIBLE);
             sensorViewHolder.total_dur.setVisibility(View.GONE);
-//            sensorViewHolder.on_dur.setVisibility(View.GONE);
-//            sensorViewHolder.off_dur.setVisibility(View.GONE);
+            sensorViewHolder.on_dur.setVisibility(View.GONE);
+            sensorViewHolder.off_dur.setVisibility(View.GONE);
         } else {
             sensorViewHolder.connectingProgress.setVisibility(View.GONE);
             sensorViewHolder.connectingText.setVisibility(View.GONE);
             sensorViewHolder.total_dur.setVisibility(View.VISIBLE);
-//            sensorViewHolder.on_dur.setVisibility(View.VISIBLE);
-//            sensorViewHolder.off_dur.setVisibility(View.VISIBLE);
+            sensorViewHolder.on_dur.setVisibility(View.VISIBLE);
+            sensorViewHolder.off_dur.setVisibility(View.VISIBLE);
         }
+
+
     }
 
     @Override
@@ -111,6 +127,7 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         EditText deviceName, total_dur, on_dur, off_dur;
         ProgressBar connectingProgress;
         SensorDatabase sensorDb;
+        Button testHaptic;
 
         SensorViewHolder(@NonNull final View itemView) {
             super(itemView);
@@ -118,8 +135,13 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
             deviceName = itemView.findViewById(R.id.status_device_name);
             deviceAddress = itemView.findViewById(R.id.status_mac_address);
             total_dur = itemView.findViewById(R.id.text_total_duration);
+            on_dur = itemView.findViewById(R.id.text_on_duration);
+            off_dur = itemView.findViewById(R.id.text_off_duration);
             connectingText = itemView.findViewById(R.id.text_connecting);
             connectingProgress = itemView.findViewById(R.id.connecting_progress);
+            testHaptic = itemView.findViewById(R.id.test_haptic_button);
+
+            //text changed listeners
             deviceName.addTextChangedListener(new TextWatcher() {
 
             public void afterTextChanged(Editable s) {
@@ -136,6 +158,54 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                 }
         });
 
+//            total_dur.addTextChangedListener(new TextWatcher() {
+//
+//                public void afterTextChanged(Editable s) {
+//                    String elementId = sensorList.get(getAdapterPosition()).uid;
+//                    updateHapticDuration(elementId, s.toString(), on_dur.getText().toString(), off_dur.getText().toString());
+//                }
+//
+//                public void beforeTextChanged(CharSequence s, int start,
+//                                              int count, int after) {
+//                }
+//
+//                public void onTextChanged(CharSequence s, int start,
+//                                          int before, int count) {
+//                }
+//            });
+//            on_dur.addTextChangedListener(new TextWatcher() {
+//
+//                public void afterTextChanged(Editable s) {
+//                    String elementId = sensorList.get(getAdapterPosition()).uid;
+//                    updateHapticDuration(elementId, total_dur.toString(), s.toString(), off_dur.toString());
+//                }
+//
+//                public void beforeTextChanged(CharSequence s, int start,
+//                                              int count, int after) {
+//                }
+//
+//                public void onTextChanged(CharSequence s, int start,
+//                                          int before, int count) {
+//                }
+//            });
+//            off_dur.addTextChangedListener(new TextWatcher() {
+//
+//                public void afterTextChanged(Editable s) {
+//                    String elementId = sensorList.get(getAdapterPosition()).uid;
+//                    updateHapticDuration(elementId, total_dur.toString(), on_dur.toString(), s.toString());
+//                }
+//
+//                public void beforeTextChanged(CharSequence s, int start,
+//                                              int count, int after) {
+//                }
+//
+//                public void onTextChanged(CharSequence s, int start,
+//                                          int before, int count) {
+//                }
+//            });
+
+
+
         }
 
         private void updateFriendlyName(String elementId, String s) {
@@ -147,112 +217,35 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                 }
             });
         }
+
+        private void updateHapticDuration(String elementId, String on, String off, String total) {
+
+            AppExecutors.getInstance().diskIO().execute(new Runnable() {
+                @Override
+                public void run() {
+                    int on_num, off_num, tot_num;
+                    try {
+                        on_num = Integer.parseInt(on);
+                    }
+                    catch(NumberFormatException e) {
+                        on_num = 0;
+                    }
+                    try {
+                        off_num = Integer.parseInt(off);
+                    }
+                    catch(NumberFormatException e) {
+                        off_num = 0;
+                    }
+                    try {
+                        tot_num = Integer.parseInt(total);
+                    }
+                    catch(NumberFormatException e) {
+                        tot_num = 0;
+                    }
+
+                    sensorDb.sensorDao().updateHaptic(on_num, off_num, tot_num, elementId);
+                }
+            });
+        }
     }
 }
-
-
-//
-//    public View getView(int position, View convertView, ViewGroup parent) {
-//        ViewHolder viewHolder;
-//
-//        if (convertView == null) {
-//            convertView= LayoutInflater.from(getContext()).inflate(R.layout.sensor_status_settings, parent, false);
-//
-//            viewHolder= new ViewHolder();
-//            viewHolder.deviceName= convertView.findViewById(R.id.status_device_name);
-//            viewHolder.total_dur = convertView.findViewById(R.id.text_total_duration);
-//            viewHolder.on_dur = convertView.findViewById(R.id.text_on_duration);
-//            viewHolder.off_dur = convertView.findViewById(R.id.text_off_duration);
-//            viewHolder.deviceAddress= convertView.findViewById(R.id.status_mac_address);
-//            viewHolder.connectingText= convertView.findViewById(R.id.text_connecting);
-//            viewHolder.connectingProgress= convertView.findViewById(R.id.connecting_progress);
-//
-//            convertView.setTag(viewHolder);
-//        } else {
-//            viewHolder= (ViewHolder) convertView.getTag();
-//        }
-//
-//        SensorDevice state= getItem(position);
-//        viewHolder.deviceName.setText(state.friendlyName);
-//        viewHolder.deviceName.addTextChangedListener(new TextWatcher() {
-//
-//            public void afterTextChanged(Editable s) {
-//            }
-//
-//            public void beforeTextChanged(CharSequence s, int start,
-//                                          int count, int after) {
-//            }
-//
-//            public void onTextChanged(CharSequence s, int start,
-//                                      int before, int count) {
-////                SensorDevice s = getSensorFromId(state.btDevice.getAddress());
-//            }
-//        });
-//
-//
-//
-//        viewHolder.deviceAddress.setText(state.uid);
-//        viewHolder.total_dur.setText("");
-//
-//        if (state.connecting) {
-//            viewHolder.connectingProgress.setVisibility(View.VISIBLE);
-//            viewHolder.connectingText.setVisibility(View.VISIBLE);
-//            viewHolder.total_dur.setVisibility(View.GONE);
-//            viewHolder.on_dur.setVisibility(View.GONE);
-//            viewHolder.off_dur.setVisibility(View.GONE);
-//        } else {
-//            viewHolder.connectingProgress.setVisibility(View.GONE);
-//            viewHolder.connectingText.setVisibility(View.GONE);
-//            viewHolder.total_dur.setVisibility(View.VISIBLE);
-//            viewHolder.on_dur.setVisibility(View.VISIBLE);
-//            viewHolder.off_dur.setVisibility(View.VISIBLE);
-//        }
-//
-//        return convertView;
-//    }
-//
-//    @
-//
-//    @NonNull
-//    @Override
-//    public ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-//        return null;
-//    }
-//
-//    @Override
-//    public void onBindViewHolder(@NonNull ViewHolder viewHolder, int i) {
-//
-//    }
-//
-//    public int getItemCount() {
-//        if ()
-//    }
-//
-//    public void setSensors(SensorDatabase sensorDb) {
-//
-//    }
-//
-////    private String getSensorFromDb(String uid ) {
-////            AppExecutors.getInstance().diskIO().execute(new Runnable() {
-////                @Override
-////                public void run() {
-////                    SensorDevice s = sensorDb.sensorDao().getSensorById(uid);
-////                }
-////            });
-////    }
-//
-//    class ViewHolder {
-//        TextView deviceAddress, connectingText;
-//        EditText deviceName, total_dur, on_dur, off_dur;
-//        ProgressBar connectingProgress;
-//    }
-//
-//    public void update(DeviceState newState) {
-//        int pos = getPosition(newState);
-//        if(pos == -1) {
-//            add(newState);
-//        }
-//        else {
-//        }
-//    }
-//}

@@ -56,6 +56,7 @@ import com.mbientlab.metawear.android.BtleService;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
+import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
@@ -69,15 +70,15 @@ import bolts.Continuation;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class MainActivityFragment extends Fragment implements ServiceConnection {
-    private final HashMap<SensorDevice, MetaWearBoard> stateToBoards;
+public class MainActivityFragment extends Fragment implements ServiceConnection, OnTestHapticClickListener {
+    private final HashMap<String, MetaWearBoard> stateToBoards;
     private BtleService.LocalBinder binder;
     private SensorDatabase sensorDb;
     private RecyclerView recyclerView;
     private ConnectedDevicesAdapter adapter;
 
     public MainActivityFragment() {
-        stateToBoards = new HashMap<SensorDevice, MetaWearBoard>();
+        stateToBoards = new HashMap<String, MetaWearBoard>();
     }
 
     @Override
@@ -85,6 +86,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         super.onCreate(savedInstanceState);
         Activity owner= getActivity();
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
+
     }
 
 
@@ -98,11 +100,11 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
     public void addNewDevice(BluetoothDevice btDevice) {
 
         //TODO: fix sensor collision issues on app failure
-        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, 10, 0, 0);
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, false, 4, 0, 0, 0, 0);
         final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
         addToDb(newDeviceState);
         retrieveSensors();
-        stateToBoards.put(newDeviceState, newBoard);
+        stateToBoards.put(btDevice.getAddress(), newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
@@ -112,7 +114,6 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
-                System.out.println("CONNECTION SUCCESSFUL");
                 updateConnectionStatusInDb(newDeviceState);
                 retrieveSensors();
             });
@@ -163,7 +164,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        adapter = new ConnectedDevicesAdapter(getActivity());
+        adapter = new ConnectedDevicesAdapter(getActivity(), this::onTestHapticClick);
+
         setRetainInstance(true);
         return inflater.inflate(R.layout.fragment_main, container, false);
     }
@@ -174,8 +176,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);
         sensorDb = SensorDatabase.getInstance(this.getContext());
-
-           }
+        }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
@@ -234,4 +235,13 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             }
         });
     }
+
+    @Override
+    public void onTestHapticClick(SensorDevice s) {
+        MetaWearBoard board = stateToBoards.get(s.uid);
+        System.out.println("board: " + board.toString());
+        board.getModule(Haptic.class).startBuzzer((short)(s.totalDuration * 1000));
+    }
+
 }
+

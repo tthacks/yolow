@@ -13,8 +13,11 @@ public interface SensorDeviceDao {
     @Query("SELECT * from sensordevice")
     public List<SensorDevice> getSensorList();
 
-    @Query("Select friendly_name from sensordevice")
-    public List<String> getNamesOfSensors();
+    @Query("SELECT * from sensordevice WHERE assigned")
+    public List<SensorDevice> getUnassignedList();
+
+    @Query("Select * from sensordevice WHERE assigned")
+    public List<SensorDevice> getAssignedList();
 
     @Query("SELECT * from sensordevice WHERE uid=:id")
     public SensorDevice getSensorById(String id);
@@ -27,6 +30,9 @@ public interface SensorDeviceDao {
 
     @Query("UPDATE sensordevice SET connecting=:connect WHERE uid = :id")
     void updateSensorConnectionStatus(boolean connect, String id);
+
+    @Query("UPDATE sensordevice SET total_duration=:total, off_duration=:off, on_duration=:on WHERE uid = :id")
+    void updateHaptic(int on, int off, int total, String id);
 
     @Update
     public void updateSensor(SensorDevice sensor);

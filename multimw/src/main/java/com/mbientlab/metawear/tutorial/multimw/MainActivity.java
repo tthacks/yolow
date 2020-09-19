@@ -45,6 +45,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.TextView;
 
 import java.util.HashMap;
 
@@ -60,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
         scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivity.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
         Button goto_human_button = findViewById(R.id.button_goto_human);
+        TextView devices_connected_label = findViewById(R.id.devices_connected_label);
         goto_human_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
