@@ -30,8 +30,7 @@
   ~ contact MbientLab Inc, at www.mbientlab.com.
   -->
 
-<android.support.design.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_main_layout"
@@ -41,9 +40,13 @@
     tools:context="com.mbientlab.metawear.tutorial.multimw.MainActivity">
 
     <android.support.design.widget.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:theme="@style/AppTheme.AppBarOverlay">
+        android:id="@+id/appBarLayout"
+        android:layout_width="0dp"
+        android:layout_height="59dp"
+        android:theme="@style/AppTheme.AppBarOverlay"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <TextView
             android:id="@+id/title"
@@ -55,37 +58,68 @@
             android:text="@string/app_name"
             android:textAppearance="@style/TextAppearance.Widget.AppCompat.Toolbar.Title" />
 
-        <android.support.design.widget.TabLayout
-            android:id="@+id/tabs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/colorPrimary" />
-
     </android.support.design.widget.AppBarLayout>
 
     <android.support.v4.view.ViewPager
         android:id="@+id/view_pager"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        android:layout_width="0dp"
+        android:layout_height="672dp"
+        android:layout_marginTop="64dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/appBarLayout">
+
+    </android.support.v4.view.ViewPager>
 
     <include
+        android:id="@+id/include"
         layout="@layout/content_main"
+        android:layout_width="0dp"
         android:layout_height="605dp"
-        android:layout_width="match_parent" />
+        android:layout_marginTop="64dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/appBarLayout" />
 
     <Button
         android:id="@+id/scan_devices_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|left"
-        android:text="SCAN FOR DEVICES" />
+        android:text="SCAN FOR DEVICES"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"/>
 
-    <Button
-        android:id="@+id/button_goto_human"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|right"
-        android:text="View Map" />
+        android:background="@color/colorPrimary"
+        android:padding="@dimen/appbar_padding"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-</android.support.design.widget.CoordinatorLayout>
+        <Button
+            android:id="@+id/button_goto_human"
+            style="@style/Widget.AppCompat.Button.Colored"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="4dp"
+            android:text="View Map" />
+
+        <Button
+            android:id="@+id/button_goto_settings"
+            style="@style/Widget.AppCompat.Button.Colored"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:padding="4dp"
+            android:text="View Settings" />
+    </LinearLayout>
+
+</android.support.constraint.ConstraintLayout>

@@ -1,12 +1,14 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.content.Intent;
+import android.media.Image;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
@@ -39,6 +41,9 @@ public class HumanActivity extends AppCompatActivity {
         Button lock_button = findViewById(R.id.button_lock);
         Button record_button = findViewById(R.id.button_record);
 
+        ImageView image_lock = findViewById(R.id.image_lock);
+        ImageView image_unlock = findViewById(R.id.image_unlock);
+
 
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         goto_settings_button.setOnClickListener(new View.OnClickListener() {
@@ -54,9 +59,13 @@ public class HumanActivity extends AppCompatActivity {
                 isLocked = !isLocked;
                 if(isLocked) {
                     lock_button.setText("UNLOCK");
+                    image_unlock.setVisibility(View.GONE);
+                    image_unlock.setVisibility(View.VISIBLE);
                 }
                 else {
                     lock_button.setText("LOCK");
+                    image_unlock.setVisibility(View.VISIBLE);
+                    image_unlock.setVisibility(View.GONE);
                 }
             }
         });
@@ -67,10 +76,14 @@ public class HumanActivity extends AppCompatActivity {
                 if(isRecording) {
                     record_button.setText("STOP RECORDING");
                     lock_button.setEnabled(false);
+                    image_unlock.setVisibility(View.GONE);
+                    image_unlock.setVisibility(View.VISIBLE);
                 }
                 else {
                     record_button.setText("START RECORDING");
                     lock_button.setEnabled(true);
+                    image_unlock.setVisibility(View.VISIBLE);
+                    image_unlock.setVisibility(View.GONE);
                 }
             }
         });
