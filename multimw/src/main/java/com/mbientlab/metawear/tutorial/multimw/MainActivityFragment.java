@@ -100,7 +100,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     public void addNewDevice(BluetoothDevice btDevice) {
 
         //TODO: fix sensor collision issues on app failure
-        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, false, 4, 0, 0, 0, 0);
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, false, 4, 1, 1, 0, 0);
         final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
         addToDb(newDeviceState);
         retrieveSensors();
@@ -239,8 +239,14 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     @Override
     public void onTestHapticClick(SensorDevice s) {
         MetaWearBoard board = stateToBoards.get(s.uid);
-        System.out.println("board: " + board.toString());
-        board.getModule(Haptic.class).startBuzzer((short)(s.totalDuration * 1000));
+        for (int i = 0; i < s.totalDuration; i = i + 1000 * (s.offDuration + s.offDuration)) {
+            board.getModule(Haptic.class).startBuzzer((short) (s.onDuration * 1000));
+            try {
+                Thread.sleep(s.offDuration * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }
