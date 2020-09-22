@@ -38,14 +38,12 @@ import android.os.Bundle;
 
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment.ScannerCommunicationBus;
 import com.mbientlab.metawear.MetaWearBoard;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 
 import java.util.UUID;
 
 public class ScannerActivity extends AppCompatActivity implements ScannerCommunicationBus {
     public static final String EXTRA_DEVICE = "com.mbientlab.metawear.tutorial.multimw.ScannerActivity.EXTRA_DEVICE";
     private final static UUID[] SERVICE_UUIDS;
-    private SensorDatabase sensorDb;
 
     static {
         SERVICE_UUIDS = new UUID[]{
@@ -57,8 +55,6 @@ public class ScannerActivity extends AppCompatActivity implements ScannerCommuni
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scanner);
-
-        sensorDb = SensorDatabase.getInstance(getApplicationContext());
     }
 
     @Override

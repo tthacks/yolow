@@ -11,19 +11,13 @@ import java.util.List;
 @Dao
 public interface SensorDeviceDao {
     @Query("SELECT * from sensordevice")
-    public List<SensorDevice> getSensorList();
-
-    @Query("SELECT * from sensordevice WHERE assigned")
-    public List<SensorDevice> getUnassignedList();
-
-    @Query("Select * from sensordevice WHERE assigned")
-    public List<SensorDevice> getAssignedList();
+    List<SensorDevice> getSensorList();
 
     @Query("SELECT * from sensordevice WHERE uid=:id")
-    public SensorDevice getSensorById(String id);
+    SensorDevice getSensorById(String id);
 
     @Insert
-    public void insertSensor(SensorDevice sensor);
+    void insertSensor(SensorDevice sensor);
 
     @Query("UPDATE sensordevice SET friendly_name=:fname WHERE uid = :id")
     void updateFriendlyName(String fname, String id);
@@ -34,11 +28,14 @@ public interface SensorDeviceDao {
     @Query("UPDATE sensordevice SET total_duration=:total, off_duration=:off, on_duration=:on WHERE uid = :id")
     void updateHaptic(int on, int off, int total, String id);
 
+    @Query("UPDATE sensordevice SET x_location=:x, y_location=:y WHERE uid = :id")
+    void updateXYCoord(int x, int y, String id);
+
     @Update
-    public void updateSensor(SensorDevice sensor);
+    void updateSensor(SensorDevice sensor);
 
     @Delete
-    public void deleteSensor(SensorDevice sensor);
+    void deleteSensor(SensorDevice sensor);
 
     @Query("DELETE FROM sensordevice WHERE uid = :id")
     void deleteSensorById(String id);

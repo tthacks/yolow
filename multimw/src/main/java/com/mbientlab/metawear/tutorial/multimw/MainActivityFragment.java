@@ -76,6 +76,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     private SensorDatabase sensorDb;
     private RecyclerView recyclerView;
     private ConnectedDevicesAdapter adapter;
+    private int numDevicesConnected;
 
     public MainActivityFragment() {
         stateToBoards = new HashMap<String, MetaWearBoard>();
@@ -86,6 +87,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
         super.onCreate(savedInstanceState);
         Activity owner= getActivity();
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
+        numDevicesConnected = 0;
 
     }
 
@@ -100,16 +102,17 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     public void addNewDevice(BluetoothDevice btDevice) {
 
         //TODO: fix sensor collision issues on app failure
-        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, false, 4, 1, 1, 0, 0);
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, false, 4, 1, 1, numDevicesConnected * 160, 0);
         final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
         addToDb(newDeviceState);
+        numDevicesConnected++;
         retrieveSensors();
         stateToBoards.put(btDevice.getAddress(), newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
 
-        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {removeFromDb(newDeviceState); retrieveSensors();}
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {removeFromDb(newDeviceState); numDevicesConnected--; retrieveSensors();}
         ));
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
@@ -135,21 +138,21 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
 //                    connectedDevices.notifyDataSetChanged();
                 });
             }));
-        }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
-            getActivity().runOnUiThread(() -> {
-                // newDeviceState.pressed = data.value(Boolean.class);
+        }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> getActivity().runOnUiThread(() -> {
+            // newDeviceState.pressed = data.value(Boolean.class);
 //                connectedDevices.notifyDataSetChanged();
-            });
-        }))).continueWith((Continuation<Route, Void>) task -> {
+        })))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
                 if (!newBoard.isConnected()) {
                     getActivity().runOnUiThread(() -> removeFromDb(newDeviceState));
+                    numDevicesConnected--;
                     retrieveSensors();
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                     newBoard.tearDown();
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
                         removeFromDb(newDeviceState);
+                        numDevicesConnected--;
                         retrieveSensors();
                         return null;
                     });
@@ -164,7 +167,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        adapter = new ConnectedDevicesAdapter(getActivity(), this::onTestHapticClick);
+        adapter = new ConnectedDevicesAdapter(getActivity(), this);
 
         setRetainInstance(true);
         return inflater.inflate(R.layout.fragment_main, container, false);
@@ -195,45 +198,22 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     }
 
     private void retrieveSensors() {
-        AppExecutors.getInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        adapter.setSensorList(sensors);
-                    }
-                });
-            }
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
+            getActivity().runOnUiThread(() -> adapter.setSensorList(sensors));
         });
     }
 
     private void removeFromDb(SensorDevice s) {
-        AppExecutors.getInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                sensorDb.sensorDao().deleteSensor(s);
-            }
-        });
+        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().deleteSensor(s));
     }
 
     private void addToDb(SensorDevice s) {
-        AppExecutors.getInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                sensorDb.sensorDao().insertSensor(s);
-            }
-        });
+        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().insertSensor(s));
     }
 
     private void updateConnectionStatusInDb(SensorDevice s) {
-        AppExecutors.getInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                sensorDb.sensorDao().updateSensorConnectionStatus(s.connecting, s.uid);
-            }
-        });
+        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateSensorConnectionStatus(s.connecting, s.uid));
     }
 
     @Override

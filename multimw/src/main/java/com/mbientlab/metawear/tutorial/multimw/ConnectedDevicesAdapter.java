@@ -31,8 +31,8 @@
 
 package com.mbientlab.metawear.tutorial.multimw;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -45,15 +45,11 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 import java.util.List;
 
-/**
- * Created by etsai on 5/22/2016.
- */
 public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevicesAdapter.SensorViewHolder> {
 
     private Context context;
@@ -72,20 +68,16 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         return new SensorViewHolder(view);
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
-    public void onBindViewHolder(@NonNull ConnectedDevicesAdapter.SensorViewHolder sensorViewHolder, int i) {
+    public void onBindViewHolder(@NonNull ConnectedDevicesAdapter.SensorViewHolder sensorViewHolder, @SuppressLint("RecyclerView") int i) {
         sensorViewHolder.deviceName.setText(sensorList.get(i).friendlyName);
         sensorViewHolder.deviceAddress.setText(sensorList.get(i).uid);
         sensorViewHolder.total_dur.setText("" + sensorList.get(i).totalDuration);
         sensorViewHolder.on_dur.setText("" + sensorList.get(i).onDuration);
         sensorViewHolder.off_dur.setText("" + sensorList.get(i).offDuration);
 
-        sensorViewHolder.testHaptic.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                testHapticClickListener.onTestHapticClick(sensorList.get(i));
-            }
-        });
+        sensorViewHolder.testHaptic.setOnClickListener(v -> testHapticClickListener.onTestHapticClick(sensorList.get(i)));
 
 
         if (sensorList.get(i).connecting) {
@@ -116,10 +108,6 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
     public void setSensorList(List<SensorDevice> s_list) {
         sensorList = s_list;
         notifyDataSetChanged();
-    }
-
-    public List<SensorDevice> getSensorList() {
-        return sensorList;
     }
 
     class SensorViewHolder extends RecyclerView.ViewHolder {
@@ -210,12 +198,7 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
 
         private void updateFriendlyName(String elementId, String s) {
 
-            AppExecutors.getInstance().diskIO().execute(new Runnable() {
-                @Override
-                public void run() {
-                    sensorDb.sensorDao().updateFriendlyName(s, elementId);
-                }
-            });
+            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateFriendlyName(s, elementId));
         }
 
         private void updateHapticDuration(String elementId, String on, String off, String total) {
