@@ -1,13 +1,10 @@
 package com.mbientlab.metawear.tutorial.multimw.database;
 
-import android.bluetooth.BluetoothDevice;
-
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-import com.mbientlab.metawear.tutorial.multimw.MainActivityFragment;
 
 @Entity
 public class SensorDevice {
@@ -15,35 +12,23 @@ public class SensorDevice {
     public String uid;
     @ColumnInfo(name = "friendly_name")
     public String friendlyName;
-    //@ColumnInfo (name = "bt_device")
-    //public BluetoothDevice btDevice;
     @ColumnInfo (name = "connecting")
     public boolean connecting;
-    @ColumnInfo(name = "total_duration")
-    public int totalDuration;
+    @ColumnInfo(name = "total_cycles")
+    public int totalCycles;
     @ColumnInfo(name = "on_duration")
-    public int onDuration;
+    public float onDuration;
     @ColumnInfo(name = "off_duration")
-    public int offDuration;
-    @ColumnInfo(name = "assigned")
-    public boolean assigned;
-    @ColumnInfo(name = "x_location")
-    public int x_location;
-    @ColumnInfo(name = "y_location")
-    public int y_location;
+    public float offDuration;
 
-    public SensorDevice(String uid, String friendlyName, boolean connecting, boolean assigned, int totalDuration, int onDuration, int offDuration, int x_location, int y_location) {
+    public SensorDevice(@NonNull String uid, String friendlyName, boolean connecting, int totalCycles, float onDuration, float offDuration) {
 
         this.uid = uid;
         this.friendlyName = friendlyName;
-        //this.btDevice = btDevice;
         this.connecting = connecting;
-        this.assigned = assigned;
-        this.totalDuration = totalDuration;
+        this.totalCycles = totalCycles;
         this.onDuration = onDuration;
         this.offDuration = offDuration;
-        this.x_location = x_location;
-        this.y_location = y_location;
     }
 
 }

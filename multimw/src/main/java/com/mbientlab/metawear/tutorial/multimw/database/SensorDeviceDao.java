@@ -4,7 +4,6 @@ import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
-import androidx.room.Update;
 
 import java.util.List;
 
@@ -12,9 +11,6 @@ import java.util.List;
 public interface SensorDeviceDao {
     @Query("SELECT * from sensordevice")
     List<SensorDevice> getSensorList();
-
-    @Query("SELECT * from sensordevice WHERE uid=:id")
-    SensorDevice getSensorById(String id);
 
     @Insert
     void insertSensor(SensorDevice sensor);
@@ -25,19 +21,16 @@ public interface SensorDeviceDao {
     @Query("UPDATE sensordevice SET connecting=:connect WHERE uid = :id")
     void updateSensorConnectionStatus(boolean connect, String id);
 
-    @Query("UPDATE sensordevice SET total_duration=:total, off_duration=:off, on_duration=:on WHERE uid = :id")
-    void updateHaptic(int on, int off, int total, String id);
+    @Query("UPDATE sensordevice SET total_cycles=:total WHERE uid = :id")
+    void updateHapticCycle(int total, String id);
 
-    @Query("UPDATE sensordevice SET x_location=:x, y_location=:y WHERE uid = :id")
-    void updateXYCoord(int x, int y, String id);
+    @Query("UPDATE sensordevice SET on_duration=:on WHERE uid = :id")
+    void updateOnDuration(float on, String id);
 
-    @Update
-    void updateSensor(SensorDevice sensor);
+    @Query("UPDATE sensordevice SET off_duration=:off WHERE uid = :id")
+    void updateOffDuration(float off, String id);
 
     @Delete
     void deleteSensor(SensorDevice sensor);
-
-    @Query("DELETE FROM sensordevice WHERE uid = :id")
-    void deleteSensorById(String id);
 }
 

@@ -76,7 +76,6 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     private SensorDatabase sensorDb;
     private RecyclerView recyclerView;
     private ConnectedDevicesAdapter adapter;
-    private int numDevicesConnected;
 
     public MainActivityFragment() {
         stateToBoards = new HashMap<String, MetaWearBoard>();
@@ -87,7 +86,6 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
         super.onCreate(savedInstanceState);
         Activity owner= getActivity();
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
-        numDevicesConnected = 0;
 
     }
 
@@ -102,17 +100,16 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     public void addNewDevice(BluetoothDevice btDevice) {
 
         //TODO: fix sensor collision issues on app failure
-        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, false, 4, 1, 1, numDevicesConnected * 160, 0);
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, 2, 1, 1);
         final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
         addToDb(newDeviceState);
-        numDevicesConnected++;
         retrieveSensors();
         stateToBoards.put(btDevice.getAddress(), newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
 
-        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {removeFromDb(newDeviceState); numDevicesConnected--; retrieveSensors();}
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {removeFromDb(newDeviceState); retrieveSensors();}
         ));
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
@@ -145,14 +142,12 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
             if (task.isFaulted()) {
                 if (!newBoard.isConnected()) {
                     getActivity().runOnUiThread(() -> removeFromDb(newDeviceState));
-                    numDevicesConnected--;
                     retrieveSensors();
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                     newBoard.tearDown();
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
                         removeFromDb(newDeviceState);
-                        numDevicesConnected--;
                         retrieveSensors();
                         return null;
                     });
@@ -219,10 +214,10 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     @Override
     public void onTestHapticClick(SensorDevice s) {
         MetaWearBoard board = stateToBoards.get(s.uid);
-        for (int i = 0; i < s.totalDuration; i = i + 1000 * (s.offDuration + s.offDuration)) {
-            board.getModule(Haptic.class).startBuzzer((short) (s.onDuration * 1000));
+        for (int i = 0; i < s.totalCycles; i++) {
+            board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
             try {
-                Thread.sleep(s.offDuration * 1000);
+                Thread.sleep((long)(s.onDuration * 1000) + (long)(s.offDuration * 1000));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

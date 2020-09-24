@@ -73,7 +73,7 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
     public void onBindViewHolder(@NonNull ConnectedDevicesAdapter.SensorViewHolder sensorViewHolder, @SuppressLint("RecyclerView") int i) {
         sensorViewHolder.deviceName.setText(sensorList.get(i).friendlyName);
         sensorViewHolder.deviceAddress.setText(sensorList.get(i).uid);
-        sensorViewHolder.total_dur.setText("" + sensorList.get(i).totalDuration);
+        sensorViewHolder.total_dur.setText("" + sensorList.get(i).totalCycles);
         sensorViewHolder.on_dur.setText("" + sensorList.get(i).onDuration);
         sensorViewHolder.off_dur.setText("" + sensorList.get(i).offDuration);
 
@@ -145,88 +145,78 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                                       int before, int count) {
                 }
         });
+            total_dur.addTextChangedListener(new TextWatcher() {
 
-//            total_dur.addTextChangedListener(new TextWatcher() {
-//
-//                public void afterTextChanged(Editable s) {
-//                    String elementId = sensorList.get(getAdapterPosition()).uid;
-//                    updateHapticDuration(elementId, s.toString(), on_dur.getText().toString(), off_dur.getText().toString());
-//                }
-//
-//                public void beforeTextChanged(CharSequence s, int start,
-//                                              int count, int after) {
-//                }
-//
-//                public void onTextChanged(CharSequence s, int start,
-//                                          int before, int count) {
-//                }
-//            });
-//            on_dur.addTextChangedListener(new TextWatcher() {
-//
-//                public void afterTextChanged(Editable s) {
-//                    String elementId = sensorList.get(getAdapterPosition()).uid;
-//                    updateHapticDuration(elementId, total_dur.toString(), s.toString(), off_dur.toString());
-//                }
-//
-//                public void beforeTextChanged(CharSequence s, int start,
-//                                              int count, int after) {
-//                }
-//
-//                public void onTextChanged(CharSequence s, int start,
-//                                          int before, int count) {
-//                }
-//            });
-//            off_dur.addTextChangedListener(new TextWatcher() {
-//
-//                public void afterTextChanged(Editable s) {
-//                    String elementId = sensorList.get(getAdapterPosition()).uid;
-//                    updateHapticDuration(elementId, total_dur.toString(), on_dur.toString(), s.toString());
-//                }
-//
-//                public void beforeTextChanged(CharSequence s, int start,
-//                                              int count, int after) {
-//                }
-//
-//                public void onTextChanged(CharSequence s, int start,
-//                                          int before, int count) {
-//                }
-//            });
+                public void afterTextChanged(Editable s) {
+                    String elementId = sensorList.get(getAdapterPosition()).uid;
+                    int val = Integer.parseInt(s.toString());
+                    updateCycleDuration(elementId, val);
+                }
 
+                public void beforeTextChanged(CharSequence s, int start,
+                                              int count, int after) {
+                }
 
+                public void onTextChanged(CharSequence s, int start,
+                                          int before, int count) {
+                }
+            });
+
+            on_dur.addTextChangedListener(new TextWatcher() {
+
+                public void afterTextChanged(Editable s) {
+                    String elementId = sensorList.get(getAdapterPosition()).uid;
+                    float val = Float.parseFloat(s.toString());
+                    updateOnOffDuration(elementId, val, true);
+                }
+
+                public void beforeTextChanged(CharSequence s, int start,
+                                              int count, int after) {
+                }
+
+                public void onTextChanged(CharSequence s, int start,
+                                          int before, int count) {
+                }
+            });
+
+            off_dur.addTextChangedListener(new TextWatcher() {
+
+                public void afterTextChanged(Editable s) {
+                    String elementId = sensorList.get(getAdapterPosition()).uid;
+                    float val = Float.parseFloat(s.toString());
+                    updateOnOffDuration(elementId, val, false);
+                }
+
+                public void beforeTextChanged(CharSequence s, int start,
+                                              int count, int after) {
+                }
+
+                public void onTextChanged(CharSequence s, int start,
+                                          int before, int count) {
+                }
+            });
 
         }
+
 
         private void updateFriendlyName(String elementId, String s) {
 
             AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateFriendlyName(s, elementId));
         }
 
-        private void updateHapticDuration(String elementId, String on, String off, String total) {
+        private void updateCycleDuration(String elementId, int length) {
 
-            AppExecutors.getInstance().diskIO().execute(new Runnable() {
-                @Override
-                public void run() {
-                    int on_num, off_num, tot_num;
-                    try {
-                        on_num = Integer.parseInt(on);
-                    }
-                    catch(NumberFormatException e) {
-                        on_num = 0;
-                    }
-                    try {
-                        off_num = Integer.parseInt(off);
-                    }
-                    catch(NumberFormatException e) {
-                        off_num = 0;
-                    }
-                    try {
-                        tot_num = Integer.parseInt(total);
-                    }
-                    catch(NumberFormatException e) {
-                        tot_num = 0;
-                    }
+            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateHapticCycle(length, elementId));
+        }
 
-                    sensorDb.sensorDao().updateHaptic(on_num, off_num, tot_num, elementId);
+        private void updateOnOffDuration(String elementId, float length, boolean isOn) {
+
+            AppExecutors.getInstance().diskIO().execute(() -> {
+                if(isOn) {
+                    sensorDb.sensorDao().updateOnDuration(length, elementId);
+                }
+                else {
+                    sensorDb.sensorDao().updateOffDuration(length, elementId);
                 }
             });
         }

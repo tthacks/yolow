@@ -31,7 +31,7 @@
     </android.support.design.widget.AppBarLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/relative_layout"
+        android:id="@+id/sensorbox_area"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="64dp"
@@ -41,44 +41,12 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.6"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-
-        <TextView
-            android:id="@+id/sensor_box_1"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="#2196F3"
-            android:padding="25dp"
-            android:text="Example Sensor"
-            tools:layout_editor_absoluteX="16dp"
-            tools:layout_editor_absoluteY="16dp" />
-
-        <TextView
-            android:id="@+id/sensor_box_2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="#2196F3"
-            android:padding="25dp"
-            android:text="Example Sensor"
-            tools:layout_editor_absoluteX="181dp"
-            tools:layout_editor_absoluteY="16dp" />
-
-        <TextView
-            android:id="@+id/sensor_box_3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="#2196F3"
-            android:padding="25dp"
-            android:text="Example Sensor"
-            tools:layout_editor_absoluteX="348dp"
-            tools:layout_editor_absoluteY="16dp" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        app:layout_constraintTop_toTopOf="parent"/>
 
     <LinearLayout
         android:id="@+id/lock_record_bar"
         android:layout_width="match_parent"
-        android:layout_height="85dp"
+        android:layout_height="wrap_content"
         android:background="@color/white"
         android:padding="@dimen/appbar_padding"
         app:layout_constraintBottom_toTopOf="@id/bottom_bar"
