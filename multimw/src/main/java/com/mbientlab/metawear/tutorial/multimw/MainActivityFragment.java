@@ -214,8 +214,10 @@ public class MainActivityFragment extends Fragment implements ServiceConnection,
     @Override
     public void onTestHapticClick(SensorDevice s) {
         MetaWearBoard board = stateToBoards.get(s.uid);
+        System.out.println("Repeating " + s.totalCycles + " times");
         for (int i = 0; i < s.totalCycles; i++) {
             board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
+            System.out.println("buzz " + i);
             try {
                 Thread.sleep((long)(s.onDuration * 1000) + (long)(s.offDuration * 1000));
             } catch (InterruptedException e) {

@@ -39,21 +39,30 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
+
 public class MainActivity extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
+    private SensorDatabase sensorDb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         //set view
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        sensorDb = SensorDatabase.getInstance(getApplicationContext());
         //init button listeners
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
         scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivity.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
         Button goto_human_button = findViewById(R.id.button_goto_human);
+        Button clear_data = findViewById(R.id.clear_data_button);
         goto_human_button.setOnClickListener(view -> {
             Intent intent = new Intent(MainActivity.this, HumanActivity.class);
             startActivity(intent);
+        });
+        clear_data.setOnClickListener(view -> {
+        clearAllTables();
         });
 
     }
@@ -88,6 +97,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void clearAllTables() {
+        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.clearAllTables());
     }
 
 }

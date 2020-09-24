@@ -48,6 +48,7 @@ import android.widget.TextView;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
+import java.io.LineNumberReader;
 import java.util.List;
 
 public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevicesAdapter.SensorViewHolder> {
@@ -149,8 +150,12 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
 
                 public void afterTextChanged(Editable s) {
                     String elementId = sensorList.get(getAdapterPosition()).uid;
-                    int val = Integer.parseInt(s.toString());
-                    updateCycleDuration(elementId, val);
+                    try {
+                        int val = Integer.parseInt(s.toString());
+                        updateCycleDuration(elementId, val);
+                        System.out.println("updated value "+ s.toString());
+                    } catch(NumberFormatException e) {
+                    }
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,
@@ -166,8 +171,12 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
 
                 public void afterTextChanged(Editable s) {
                     String elementId = sensorList.get(getAdapterPosition()).uid;
-                    float val = Float.parseFloat(s.toString());
-                    updateOnOffDuration(elementId, val, true);
+                    try {
+                        float val = Float.parseFloat(s.toString());
+                        updateOnOffDuration(elementId, val, true);
+                        System.out.println("updated value "+ s.toString());
+                    } catch (NumberFormatException e) {
+                    }
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,
@@ -183,8 +192,12 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
 
                 public void afterTextChanged(Editable s) {
                     String elementId = sensorList.get(getAdapterPosition()).uid;
-                    float val = Float.parseFloat(s.toString());
-                    updateOnOffDuration(elementId, val, false);
+                    try {
+                        float val = Float.parseFloat(s.toString());
+                        updateOnOffDuration(elementId, val, false);
+                        System.out.println("updated value "+ s.toString());
+                    }
+                    catch(NumberFormatException e) {}
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,

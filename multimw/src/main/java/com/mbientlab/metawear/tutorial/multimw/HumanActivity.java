@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.DragEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -19,10 +20,11 @@ import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 import java.util.List;
 
-public class HumanActivity extends AppCompatActivity {
+public class HumanActivity extends AppCompatActivity implements View.OnTouchListener, View.OnDragListener {
 
     private boolean isLocked, isRecording;
     private SensorDatabase sensorDb;
+    private View currentlyDragging = null;
 
 
     @SuppressLint("SetTextI18n")
@@ -81,35 +83,53 @@ public class HumanActivity extends AppCompatActivity {
         retrieveSensors();
     }
 
-    private class BoxLongClickListener implements View.OnLongClickListener {
-        @Override
-        public boolean onLongClick(View v) {
-            if (!isLocked) {
+//        @Override
+//        public boolean onLongClick(View v) {
+//            if (!isLocked) {
+//                ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
+//                String[] mimeTypes = {ClipDescription.MIMETYPE_TEXT_PLAIN};
+//                ClipData data = new ClipData(v.getTag().toString(), mimeTypes, item);
+//                View.DragShadowBuilder dragshadow = new View.DragShadowBuilder(v);
+//                v.startDrag(data, dragshadow, null, 0);
+//                return true;
+//            }
+//            return false;
+//        }
+
+    public boolean onTouch(View v, MotionEvent event) {
+        int action = event.getAction();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
                 ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
                 String[] mimeTypes = {ClipDescription.MIMETYPE_TEXT_PLAIN};
                 ClipData data = new ClipData(v.getTag().toString(), mimeTypes, item);
                 View.DragShadowBuilder dragshadow = new View.DragShadowBuilder(v);
                 v.startDrag(data, dragshadow, null, 0);
+                currentlyDragging = v;
                 return true;
-            }
-            return false;
         }
+        return false;
     }
 
-    private class BoxDragListener implements View.OnDragListener {
-        @Override
         public boolean onDrag(View v, DragEvent event) {
             if (!isLocked) {
-                if (event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
-                    v.setX(event.getX());
-                    v.setY(event.getY());
-                    System.out.println("Drag n drop happened");
+                int action = event.getAction();
+                switch (action) {
+                    case DragEvent.ACTION_DRAG_ENDED:
+                        if(currentlyDragging != null) {
+                            currentlyDragging.setX(event.getX());
+                            currentlyDragging.setY(event.getY());
+                            currentlyDragging = null;
+                        }
+                    return true;
+                    case DragEvent.ACTION_DRAG_STARTED:
+                        return true;
                 }
-                return true;
+                return false;
             }
             return false;
         }
-    }
+
 
     private void retrieveSensors() {
         AppExecutors.getInstance().diskIO().execute(() -> {
@@ -120,6 +140,10 @@ public class HumanActivity extends AppCompatActivity {
                     SensorDevice s = sensors.get(i);
                     TextView sensorbox = new TextView(this);
                     sensorbox.setText(s.friendlyName);
+                    sensorbox.setBackgroundResource(R.color.colorAccent);
+                    sensorbox.setX(i * 300);
+                    sensorbox.setTextSize(24);
+                    sensorbox.setPadding(8, 8, 8, 8);
 
                     ConstraintLayout.LayoutParams clpSensorbox = new ConstraintLayout.LayoutParams(
                             ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT);
@@ -133,7 +157,8 @@ public class HumanActivity extends AppCompatActivity {
 
     private void setDraggable(TextView sensorbox, int i) {
         sensorbox.setTag("sensor" + i);
-        sensorbox.setOnLongClickListener(new BoxLongClickListener());
-        sensorbox.setOnDragListener(new BoxDragListener());
+        //sensorbox.setOnLongClickListener(this);
+        sensorbox.setOnTouchListener(this);
+        sensorbox.setOnDragListener(this);
     }
 }
