@@ -1,19 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_alignParentLeft="false"
-    android:layout_alignParentEnd="false"
-    android:layout_alignParentBottom="false">
+    android:fitsSystemWindows="true"
+    tools:context="com.mbientlab.metawear.tutorial.multimw.MainActivity">
 
     <android.support.design.widget.AppBarLayout
-        android:id="@+id/appbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:id="@+id/appBarLayout"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/top_bar_padding"
         android:theme="@style/AppTheme.AppBarOverlay"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -21,63 +20,44 @@
             android:id="@+id/title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:minHeight="?actionBarSize"
             android:padding="@dimen/appbar_padding"
-            android:text="Sensor Map"
+            android:text="@string/settings"
             android:textAppearance="@style/TextAppearance.Widget.AppCompat.Toolbar.Title" />
-
 
     </android.support.design.widget.AppBarLayout>
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/sensorbox_area"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="64dp"
-        android:layout_marginBottom="85dp"
-        android:background="@drawable/human_outline"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.6"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
 
-    <LinearLayout
-        android:id="@+id/lock_record_bar"
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/white"
-        android:padding="@dimen/appbar_padding"
-        app:layout_constraintBottom_toTopOf="@id/bottom_bar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/appBarLayout">
 
-        <Button
-            android:id="@+id/button_lock"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="wrap_content"
+        <include
+            layout="@layout/content_main"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@color/colorPrimaryDark"
-            android:padding="4dp"
-            android:text="LOCK" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </android.support.constraint.ConstraintLayout>
 
-        <Button
-            android:id="@+id/button_record"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@color/colorAccent2"
-            android:padding="4dp"
-            android:text="START RECORDING" />
-    </LinearLayout>
+    <Button
+        android:id="@+id/scan_devices_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SCAN DEVICES"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar" />
 
     <LinearLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="85dp"
+        android:layout_height="@dimen/bottom_bar_padding"
         android:background="@color/colorPrimary"
         android:padding="@dimen/appbar_padding"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -90,7 +70,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@color/colorPrimary"
             android:padding="4dp"
             android:text="View Map" />
 
@@ -100,6 +79,7 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_weight="1"
+            android:background="@color/colorPrimary"
             android:padding="4dp"
             android:text="View Settings" />
     </LinearLayout>

@@ -59,7 +59,7 @@
             android:id="@+id/label_total_duration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Total Duration (s): " />
+            android:text="Number of Cycles:" />
 
         <EditText
             android:id="@+id/text_total_duration"
@@ -85,7 +85,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:inputType="number" />
+            android:inputType="numberDecimal" />
     </LinearLayout>
 
     <LinearLayout
@@ -104,7 +104,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:inputType="number" />
+            android:inputType="numberDecimal" />
     </LinearLayout>
 
     <TextView
@@ -125,6 +125,7 @@
         android:id="@+id/test_haptic_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/colorAccent"
         android:text="Test Haptic" />
 
 </LinearLayout>

@@ -40,7 +40,6 @@ import android.view.MenuItem;
 import android.widget.Button;
 
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 public class MainActivity extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;

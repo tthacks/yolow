@@ -31,9 +31,12 @@
   -->
 
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#FF4081</color>
-    <color name="sensorboxDefault">#AAFAFF</color>
+    <color name="colorAccent">#00D0B6</color>
+    <color name="colorPrimary">#0082D0</color>
+    <color name="colorPrimaryDark">#001AD0</color>
+    <color name="colorAccent2">#B600D0</color>
+    <color name="sensorboxDefault">#00B6D0</color>
+    <color name="sensorboxConnected">#48E300</color>
+    <color name="sensorboxError">#E32900</color>
     <color name="white">#FFFFFF</color>
 </resources>
