@@ -12,6 +12,9 @@ public interface SensorDeviceDao {
     @Query("SELECT * from sensordevice")
     List<SensorDevice> getSensorList();
 
+    @Query("SELECT * from sensordevice WHERE uid = :id")
+    SensorDevice getSensorById(String id);
+
     @Insert
     void insertSensor(SensorDevice sensor);
 

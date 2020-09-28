@@ -1,7 +1,6 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.os.Bundle;
@@ -23,13 +22,15 @@ import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class HumanFragment extends Fragment implements View.OnTouchListener, View.OnDragListener, OnTestHapticClickListener {
 
     private boolean isLocked, isRecording;
-    private SensorDatabase sensorDb;
+    //private SensorDatabase sensorDb;
     private View currentlyDragging = null;
+    // private SensorDevice currentSensor;
     //private OnTestHapticClickListener hapticClickListener;
 
     @Override
@@ -52,7 +53,7 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        sensorDb = SensorDatabase.getInstance(getActivity().getApplicationContext());
+        //sensorDb = SensorDatabase.getInstance(getActivity().getApplicationContext());
 
         //button controls
         isLocked = false;
@@ -90,13 +91,31 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
     }
 
     public boolean onTouch(View v, MotionEvent event) {
-        if (!isLocked && event.getAction() == MotionEvent.ACTION_DOWN) {
-            ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
-            String[] mimeTypes = {ClipDescription.MIMETYPE_TEXT_PLAIN};
-            ClipData data = new ClipData(v.getTag().toString(), mimeTypes, item);
-            View.DragShadowBuilder dragshadow = new View.DragShadowBuilder(v);
-            v.startDrag(data, dragshadow, null, 0);
-            currentlyDragging = v;
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            if(!isLocked) {
+                ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
+                String[] mimeTypes = {ClipDescription.MIMETYPE_TEXT_PLAIN};
+                ClipData data = new ClipData(v.getTag().toString(), mimeTypes, item);
+                View.DragShadowBuilder dragshadow = new View.DragShadowBuilder(v);
+                v.startDrag(data, dragshadow, null, 0);
+                currentlyDragging = v;
+                return true;
+            }
+            else {
+                //send haptic
+                SensorDevice currSensor = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
+                MetaWearBoard board = MainActivityContainer.getStateToBoards().get(v.getTag().toString());
+                System.out.println("Repeating " + currSensor.totalCycles + " times");
+                for (int i = 0; i < currSensor.totalCycles; i++) {
+                    board.getModule(Haptic.class).startMotor((short) (currSensor.onDuration * 1000));
+                    System.out.println("buzz " + i);
+                    try {
+                        Thread.sleep((long) (currSensor.onDuration * 1000) + (long) (currSensor.offDuration * 1000));
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
             return true;
         }
         return false;
@@ -121,16 +140,15 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
         return false;
     }
 
-
-    private void retrieveSensors() {
-        AppExecutors.getInstance().diskIO().execute(() -> {
-            final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
-            getActivity().runOnUiThread(() -> {
-                ConstraintLayout constraintLayout = getView().findViewById(R.id.sensorbox_area);
+    private void retrieveSensors()  {
+        List<SensorDevice> sensors = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
+        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensorbox_area);
                 for(int i = 0; i < sensors.size(); i++) {
                     SensorDevice s = sensors.get(i);
                     TextView sensorbox = new TextView(getActivity().getApplicationContext());
                     sensorbox.setText(s.friendlyName);
+                    System.out.println("UID: " + s.uid);
+                    sensorbox.setTag(s.uid);
                     sensorbox.setBackgroundResource(R.color.sensorboxDefault);
                     sensorbox.setX(i * 300);
                     sensorbox.setTextSize(24);
@@ -139,14 +157,41 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
                             ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT);
                     sensorbox.setLayoutParams(clpSensorbox);
                     constraintLayout.addView(sensorbox);
-                    setDraggable(sensorbox, i);
+                    setDraggable(sensorbox);
                 }
-            });
-        });
     }
 
-    private void setDraggable(TextView sensorbox, int i) {
-        sensorbox.setTag("sensor" + i);
+//    private void retrieveSensors() {
+//        AppExecutors.getInstance().diskIO().execute(() -> {
+//            final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
+//            getActivity().runOnUiThread(() -> {
+//                ConstraintLayout constraintLayout = getView().findViewById(R.id.sensorbox_area);
+//                for(int i = 0; i < sensors.size(); i++) {
+//                    SensorDevice s = sensors.get(i);
+//                    TextView sensorbox = new TextView(getActivity().getApplicationContext());
+//                    sensorbox.setText(s.friendlyName);
+//                    sensorbox.setTag(s.uid);
+//                    sensorbox.setBackgroundResource(R.color.sensorboxDefault);
+//                    sensorbox.setX(i * 300);
+//                    sensorbox.setTextSize(24);
+//                    sensorbox.setPadding(16, 16, 16, 16);
+//                    ConstraintLayout.LayoutParams clpSensorbox = new ConstraintLayout.LayoutParams(
+//                            ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT);
+//                    sensorbox.setLayoutParams(clpSensorbox);
+//                    constraintLayout.addView(sensorbox);
+//                    setDraggable(sensorbox, i);
+//                }
+//            });
+//        });
+//    }
+
+//    private void getSensorFromDb(String id) {
+//        AppExecutors.getInstance().diskIO().execute(() -> {
+//            currentSensor = sensorDb.sensorDao().getSensorById(id);
+//        });
+//    }
+
+    private void setDraggable(TextView sensorbox) {
         sensorbox.setOnTouchListener(this);
         sensorbox.setOnDragListener(this);
     }

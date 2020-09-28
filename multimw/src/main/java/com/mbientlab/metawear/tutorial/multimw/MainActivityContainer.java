@@ -16,21 +16,21 @@ import android.widget.Button;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.android.BtleService;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
+import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 import java.util.HashMap;
+import java.util.List;
 
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     private static HashMap<String, MetaWearBoard> stateToBoards;
-    private SensorDatabase sensorDb;
-    private BtleService.LocalBinder binder;
+    private static HashMap<String, SensorDevice> deviceStates;
     private boolean viewingSettings = true;
-    private boolean onStartup = true;
     private FragmentManager fm;
-    private String settingsTag;
 
     public MainActivityContainer() {
         stateToBoards = new HashMap<String, MetaWearBoard>();
+        deviceStates = new HashMap<String, SensorDevice>();
     }
 
     @Override
@@ -38,7 +38,6 @@ public class MainActivityContainer extends AppCompatActivity {
         //set view
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_container);
-        sensorDb = SensorDatabase.getInstance(getApplicationContext());
         //init button listeners
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
@@ -115,6 +114,22 @@ public class MainActivityContainer extends AppCompatActivity {
 
     public static void addStateToBoards(String address, MetaWearBoard board) {
         stateToBoards.put(address, board);
+    }
+
+    public static HashMap<String, SensorDevice> getDeviceStates() {
+        return deviceStates;
+    }
+
+    public static List<SensorDevice> getAllSensors() {
+        return (List) deviceStates.values();
+    }
+
+    public static SensorDevice getSensorById(String id) {
+        return deviceStates.get(id);
+    }
+
+    public static void addSensorToDeviceStates(String id, SensorDevice s) {
+        deviceStates.put(id, s);
     }
 
 }

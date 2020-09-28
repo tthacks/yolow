@@ -31,15 +31,15 @@ import com.mbientlab.metawear.module.Switch;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import bolts.Capture;
 import bolts.Continuation;
 
 public class SettingsFragment extends Fragment implements ServiceConnection, OnTestHapticClickListener {
-    public static final int REQUEST_START_BLE_SCAN= 1;
     private BtleService.LocalBinder binder;
-    private SensorDatabase sensorDb;
+    // private SensorDatabase sensorDb;
     private RecyclerView recyclerView;
     private ConnectedDevicesAdapter adapter;
 
@@ -64,19 +64,24 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         //TODO: fix sensor collision issues on app failure
         final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, 2, 1, 1);
         final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
-        addToDb(newDeviceState);
+        //addToDb(newDeviceState);
+        MainActivityContainer.getDeviceStates().put(newDeviceState.uid, newDeviceState);
         retrieveSensors();
         MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
 
-        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {removeFromDb(newDeviceState); retrieveSensors();}
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
+            //removeFromDb(newDeviceState);
+            MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
+            retrieveSensors();}
         ));
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
-                updateConnectionStatusInDb(newDeviceState);
+                //updateConnectionStatusInDb(newDeviceState);
+                MainActivityContainer.getSensorById(newDeviceState.uid).connecting = false;
                 retrieveSensors();
             });
 
@@ -101,13 +106,16 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         })))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
                 if (!newBoard.isConnected()) {
-                    getActivity().runOnUiThread(() -> removeFromDb(newDeviceState));
+                    getActivity().runOnUiThread(() -> {//removeFromDb(newDeviceState)
+                        MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
+                    });
                     retrieveSensors();
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                     newBoard.tearDown();
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
-                        removeFromDb(newDeviceState);
+                        //removeFromDb(newDeviceState);
+                        MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
                         retrieveSensors();
                         return null;
                     });
@@ -133,10 +141,10 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         recyclerView = view.findViewById(R.id.connected_devices);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);
-        sensorDb = SensorDatabase.getInstance(this.getContext());
+        // sensorDb = SensorDatabase.getInstance(this.getContext());
         Button clear_data_button = view.findViewById(R.id.clear_data_button);
         clear_data_button.setOnClickListener(v -> {
-            clearAllTables();
+            //clearAllTables();
         });
     }
 
@@ -157,27 +165,31 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
     }
 
     private void retrieveSensors() {
-        AppExecutors.getInstance().diskIO().execute(() -> {
-            final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
-            getActivity().runOnUiThread(() -> adapter.setSensorList(sensors));
-        });
+        adapter.setSensorList(new ArrayList<>(MainActivityContainer.getDeviceStates().values()));
     }
 
-    private void removeFromDb(SensorDevice s) {
-        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().deleteSensor(s));
-    }
+//    private void retrieveSensors() {
+//        AppExecutors.getInstance().diskIO().execute(() -> {
+//             final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
+//            getActivity().runOnUiThread(() -> adapter.setSensorList(sensors));
+//        });
+//    }
 
-    private void addToDb(SensorDevice s) {
-        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().insertSensor(s));
-    }
-
-    private void updateConnectionStatusInDb(SensorDevice s) {
-        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateSensorConnectionStatus(s.connecting, s.uid));
-    }
-
-    private void clearAllTables() {
-        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.clearAllTables());
-    }
+//    private void removeFromDb(SensorDevice s) {
+//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().deleteSensor(s));
+//    }
+//
+//    private void addToDb(SensorDevice s) {
+//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().insertSensor(s));
+//    }
+//
+//    private void updateConnectionStatusInDb(SensorDevice s) {
+//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateSensorConnectionStatus(s.connecting, s.uid));
+//    }
+//
+//    private void clearAllTables() {
+//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.clearAllTables());
+//    }
 
     @Override
     public void onTestHapticClick(SensorDevice s) {

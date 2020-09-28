@@ -115,12 +115,12 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         TextView deviceAddress, connectingText;
         EditText deviceName, total_dur, on_dur, off_dur;
         ProgressBar connectingProgress;
-        SensorDatabase sensorDb;
+        //SensorDatabase sensorDb;
         Button testHaptic;
 
         SensorViewHolder(@NonNull final View itemView) {
             super(itemView);
-            sensorDb = SensorDatabase.getInstance(context);
+            //sensorDb = SensorDatabase.getInstance(context);
             deviceName = itemView.findViewById(R.id.status_device_name);
             deviceAddress = itemView.findViewById(R.id.status_mac_address);
             total_dur = itemView.findViewById(R.id.text_total_duration);
@@ -211,27 +211,46 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
 
         }
 
-
-        private void updateFriendlyName(String elementId, String s) {
-
-            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateFriendlyName(s, elementId));
+        private void updateFriendlyName(String id, String s) {
+            MainActivityContainer.getSensorById(id).friendlyName = s;
         }
 
-        private void updateCycleDuration(String elementId, int length) {
+        private void updateCycleDuration(String id, int length) {
+            MainActivityContainer.getSensorById(id).totalCycles = length;
 
-            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateHapticCycle(length, elementId));
         }
 
-        private void updateOnOffDuration(String elementId, float length, boolean isOn) {
-
-            AppExecutors.getInstance().diskIO().execute(() -> {
-                if(isOn) {
-                    sensorDb.sensorDao().updateOnDuration(length, elementId);
-                }
-                else {
-                    sensorDb.sensorDao().updateOffDuration(length, elementId);
-                }
-            });
+        private void updateOnOffDuration(String id, float length, boolean isOn) {
+            if(isOn) {
+                MainActivityContainer.getSensorById(id).onDuration = length;
+            }
+            else {
+                MainActivityContainer.getSensorById(id).offDuration = length;
+            }
         }
+
+
+
+//        private void updateFriendlyName(String elementId, String s) {
+//
+//            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateFriendlyName(s, elementId));
+//        }
+
+//        private void updateCycleDuration(String elementId, int length) {
+//
+//            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateHapticCycle(length, elementId));
+//        }
+
+//        private void updateOnOffDuration(String elementId, float length, boolean isOn) {
+//
+//            AppExecutors.getInstance().diskIO().execute(() -> {
+//                if(isOn) {
+//                    sensorDb.sensorDao().updateOnDuration(length, elementId);
+//                }
+//                else {
+//                    sensorDb.sensorDao().updateOffDuration(length, elementId);
+//                }
+//            });
+//        }
     }
 }
