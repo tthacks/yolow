@@ -16,7 +16,6 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 
 import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
@@ -28,19 +27,14 @@ import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import bolts.Capture;
 import bolts.Continuation;
 
 public class SettingsFragment extends Fragment implements ServiceConnection, OnTestHapticClickListener {
     private BtleService.LocalBinder binder;
-    // private SensorDatabase sensorDb;
-    private RecyclerView recyclerView;
     private ConnectedDevicesAdapter adapter;
 
     @Override
@@ -48,9 +42,7 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         super.onCreate(savedInstanceState);
         Activity owner= getActivity();
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
-
     }
-
 
     @Override
     public void onDestroy() {
@@ -58,13 +50,10 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         getActivity().getApplicationContext().unbindService(this);
     }
 
-
     public void addNewDevice(BluetoothDevice btDevice) {
 
-        //TODO: fix sensor collision issues on app failure
-        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), true, 2, 1, 1);
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName());
         final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
-        //addToDb(newDeviceState);
         MainActivityContainer.getDeviceStates().put(newDeviceState.uid, newDeviceState);
         retrieveSensors();
         MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
@@ -73,14 +62,12 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         final Capture<Accelerometer> accelCapture = new Capture<>();
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
-            //removeFromDb(newDeviceState);
             MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
             retrieveSensors();}
         ));
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
-                //updateConnectionStatusInDb(newDeviceState);
                 MainActivityContainer.getSensorById(newDeviceState.uid).connecting = false;
                 retrieveSensors();
             });
@@ -101,20 +88,15 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
                 });
             }));
         }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> getActivity().runOnUiThread(() -> {
-            // newDeviceState.pressed = data.value(Boolean.class);
-//                connectedDevices.notifyDataSetChanged();
         })))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
                 if (!newBoard.isConnected()) {
-                    getActivity().runOnUiThread(() -> {//removeFromDb(newDeviceState)
-                        MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
-                    });
+                    getActivity().runOnUiThread(() -> MainActivityContainer.getDeviceStates().remove(newDeviceState.uid));
                     retrieveSensors();
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                     newBoard.tearDown();
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
-                        //removeFromDb(newDeviceState);
                         MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
                         retrieveSensors();
                         return null;
@@ -138,14 +120,9 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        recyclerView = view.findViewById(R.id.connected_devices);
+        RecyclerView recyclerView = view.findViewById(R.id.connected_devices);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);
-        // sensorDb = SensorDatabase.getInstance(this.getContext());
-        Button clear_data_button = view.findViewById(R.id.clear_data_button);
-        clear_data_button.setOnClickListener(v -> {
-            //clearAllTables();
-        });
     }
 
     @Override
@@ -154,9 +131,7 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
     }
 
     @Override
-    public void onServiceDisconnected(ComponentName name) {
-
-    }
+    public void onServiceDisconnected(ComponentName name) {}
 
     @Override
     public void onResume() {
@@ -168,40 +143,18 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         adapter.setSensorList(new ArrayList<>(MainActivityContainer.getDeviceStates().values()));
     }
 
-//    private void retrieveSensors() {
-//        AppExecutors.getInstance().diskIO().execute(() -> {
-//             final List<SensorDevice> sensors = sensorDb.sensorDao().getSensorList();
-//            getActivity().runOnUiThread(() -> adapter.setSensorList(sensors));
-//        });
-//    }
-
-//    private void removeFromDb(SensorDevice s) {
-//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().deleteSensor(s));
-//    }
-//
-//    private void addToDb(SensorDevice s) {
-//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().insertSensor(s));
-//    }
-//
-//    private void updateConnectionStatusInDb(SensorDevice s) {
-//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateSensorConnectionStatus(s.connecting, s.uid));
-//    }
-//
-//    private void clearAllTables() {
-//        AppExecutors.getInstance().diskIO().execute(() -> sensorDb.clearAllTables());
-//    }
-
     @Override
     public void onTestHapticClick(SensorDevice s) {
         MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.uid);
-        System.out.println("Repeating " + s.totalCycles + " times");
-        for (int i = 0; i < s.totalCycles; i++) {
-            board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
-            System.out.println("buzz " + i);
-            try {
-                Thread.sleep((long)(s.onDuration * 1000) + (long)(s.offDuration * 1000));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        if(board != null) {
+            for (int i = 0; i < s.totalCycles; i++) {
+                board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
+                System.out.println("buzz " + i);
+                try {
+                    Thread.sleep((long) (s.onDuration * 1000) + (long) (s.offDuration * 1000));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

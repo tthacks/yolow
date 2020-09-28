@@ -45,10 +45,6 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
-
-import java.io.LineNumberReader;
 import java.util.List;
 
 public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevicesAdapter.SensorViewHolder> {
@@ -115,12 +111,10 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         TextView deviceAddress, connectingText;
         EditText deviceName, total_dur, on_dur, off_dur;
         ProgressBar connectingProgress;
-        //SensorDatabase sensorDb;
         Button testHaptic;
 
         SensorViewHolder(@NonNull final View itemView) {
             super(itemView);
-            //sensorDb = SensorDatabase.getInstance(context);
             deviceName = itemView.findViewById(R.id.status_device_name);
             deviceAddress = itemView.findViewById(R.id.status_mac_address);
             total_dur = itemView.findViewById(R.id.text_total_duration);
@@ -153,18 +147,14 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                     try {
                         int val = Integer.parseInt(s.toString());
                         updateCycleDuration(elementId, val);
-                        System.out.println("updated value "+ s.toString());
-                    } catch(NumberFormatException e) {
-                    }
+                    } catch(NumberFormatException ignored) {}
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,
-                                              int count, int after) {
-                }
+                                              int count, int after) {}
 
                 public void onTextChanged(CharSequence s, int start,
-                                          int before, int count) {
-                }
+                                          int before, int count) {}
             });
 
             on_dur.addTextChangedListener(new TextWatcher() {
@@ -174,18 +164,14 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                     try {
                         float val = Float.parseFloat(s.toString());
                         updateOnOffDuration(elementId, val, true);
-                        System.out.println("updated value "+ s.toString());
-                    } catch (NumberFormatException e) {
-                    }
+                    } catch (NumberFormatException ignored) {}
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,
-                                              int count, int after) {
-                }
+                                              int count, int after) {}
 
                 public void onTextChanged(CharSequence s, int start,
-                                          int before, int count) {
-                }
+                                          int before, int count) {}
             });
 
             off_dur.addTextChangedListener(new TextWatcher() {
@@ -195,18 +181,15 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                     try {
                         float val = Float.parseFloat(s.toString());
                         updateOnOffDuration(elementId, val, false);
-                        System.out.println("updated value "+ s.toString());
                     }
-                    catch(NumberFormatException e) {}
+                    catch(NumberFormatException ignored) {}
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,
-                                              int count, int after) {
-                }
+                                              int count, int after) {}
 
                 public void onTextChanged(CharSequence s, int start,
-                                          int before, int count) {
-                }
+                                          int before, int count) {}
             });
 
         }
@@ -228,29 +211,5 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                 MainActivityContainer.getSensorById(id).offDuration = length;
             }
         }
-
-
-
-//        private void updateFriendlyName(String elementId, String s) {
-//
-//            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateFriendlyName(s, elementId));
-//        }
-
-//        private void updateCycleDuration(String elementId, int length) {
-//
-//            AppExecutors.getInstance().diskIO().execute(() -> sensorDb.sensorDao().updateHapticCycle(length, elementId));
-//        }
-
-//        private void updateOnOffDuration(String elementId, float length, boolean isOn) {
-//
-//            AppExecutors.getInstance().diskIO().execute(() -> {
-//                if(isOn) {
-//                    sensorDb.sensorDao().updateOnDuration(length, elementId);
-//                }
-//                else {
-//                    sensorDb.sensorDao().updateOffDuration(length, elementId);
-//                }
-//            });
-//        }
     }
 }

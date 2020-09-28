@@ -3,7 +3,6 @@ package com.mbientlab.metawear.tutorial.multimw;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
@@ -14,12 +13,8 @@ import android.view.View;
 import android.widget.Button;
 
 import com.mbientlab.metawear.MetaWearBoard;
-import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDatabase;
-import com.mbientlab.metawear.tutorial.multimw.database.SensorDevice;
 
 import java.util.HashMap;
-import java.util.List;
 
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
@@ -29,8 +24,8 @@ public class MainActivityContainer extends AppCompatActivity {
     private FragmentManager fm;
 
     public MainActivityContainer() {
-        stateToBoards = new HashMap<String, MetaWearBoard>();
-        deviceStates = new HashMap<String, SensorDevice>();
+        stateToBoards = new HashMap<>();
+        deviceStates = new HashMap<>();
     }
 
     @Override
@@ -79,9 +74,11 @@ public class MainActivityContainer extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(requestCode == REQUEST_START_BLE_SCAN) {
-            BluetoothDevice selectedDevice= data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
-            if (selectedDevice != null) {
-                ((SettingsFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
+            if(data != null) {
+                BluetoothDevice selectedDevice = data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
+                if (selectedDevice != null) {
+                    ((SettingsFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
+                }
             }
         }
     }
@@ -120,16 +117,8 @@ public class MainActivityContainer extends AppCompatActivity {
         return deviceStates;
     }
 
-    public static List<SensorDevice> getAllSensors() {
-        return (List) deviceStates.values();
-    }
-
     public static SensorDevice getSensorById(String id) {
         return deviceStates.get(id);
-    }
-
-    public static void addSensorToDeviceStates(String id, SensorDevice s) {
-        deviceStates.put(id, s);
     }
 
 }
