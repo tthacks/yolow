@@ -40,11 +40,17 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.RadioButton;
+import android.widget.Spinner;
 import android.widget.TextView;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevicesAdapter.SensorViewHolder> {
@@ -52,6 +58,7 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
     private Context context;
     private List<SensorDevice> sensorList;
     private OnTestHapticClickListener testHapticClickListener;
+    private List<String> csvSelect;
 
     public ConnectedDevicesAdapter(Context context, OnTestHapticClickListener hapticClickListener) {
         this.context = context;
@@ -61,7 +68,13 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
     @NonNull
     @Override
     public SensorViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        View view = LayoutInflater.from(context).inflate(R.layout.sensor_status_settings, viewGroup, false);
+        csvSelect = new ArrayList<>();
+        Field[] fields = R.raw.class.getFields();
+        for(int x = 0; x < fields.length; x++) {
+            csvSelect.add(fields[x].getName());
+        }
+
+        View view = LayoutInflater.from(context).inflate(R.layout.sensor_status_w_csv, viewGroup, false);
         return new SensorViewHolder(view);
     }
 
@@ -73,25 +86,33 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         sensorViewHolder.total_dur.setText("" + sensorList.get(i).totalCycles);
         sensorViewHolder.on_dur.setText("" + sensorList.get(i).onDuration);
         sensorViewHolder.off_dur.setText("" + sensorList.get(i).offDuration);
+        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(this.context, android.R.layout.simple_spinner_item, csvSelect);
+        arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sensorViewHolder.csvDropdown.setAdapter(arrayAdapter);
+        sensorViewHolder.csvDropdown.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                MainActivityContainer.getSensorById(sensorList.get(i).uid).csvFile = csvSelect.get(position);
+            }
+            @Override
+            public void onNothingSelected(AdapterView <?> parent) {
+                MainActivityContainer.getSensorById(sensorList.get(i).uid).csvFile = csvSelect.get(0);
+            }
+        });
 
         sensorViewHolder.testHaptic.setOnClickListener(v -> testHapticClickListener.onTestHapticClick(sensorList.get(i)));
-
+        sensorViewHolder.uploadCSV.setOnClickListener(v -> {
+            //TODO: upload csv files
+            System.out.println("TODO: Not yet implemented.");
+        });
 
         if (sensorList.get(i).connecting) {
             sensorViewHolder.connectingProgress.setVisibility(View.VISIBLE);
             sensorViewHolder.connectingText.setVisibility(View.VISIBLE);
-            sensorViewHolder.total_dur.setVisibility(View.GONE);
-            sensorViewHolder.on_dur.setVisibility(View.GONE);
-            sensorViewHolder.off_dur.setVisibility(View.GONE);
         } else {
             sensorViewHolder.connectingProgress.setVisibility(View.GONE);
             sensorViewHolder.connectingText.setVisibility(View.GONE);
-            sensorViewHolder.total_dur.setVisibility(View.VISIBLE);
-            sensorViewHolder.on_dur.setVisibility(View.VISIBLE);
-            sensorViewHolder.off_dur.setVisibility(View.VISIBLE);
         }
-
-
     }
 
     @Override
@@ -108,21 +129,61 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
     }
 
     class SensorViewHolder extends RecyclerView.ViewHolder {
-        TextView deviceAddress, connectingText;
+        TextView deviceAddress, connectingText, total_label, on_label, off_label;
         EditText deviceName, total_dur, on_dur, off_dur;
+        RadioButton radioCSV, customCSV;
         ProgressBar connectingProgress;
-        Button testHaptic;
+        Button testHaptic, uploadCSV;
+        Spinner csvDropdown;
+
 
         SensorViewHolder(@NonNull final View itemView) {
             super(itemView);
             deviceName = itemView.findViewById(R.id.status_device_name);
             deviceAddress = itemView.findViewById(R.id.status_mac_address);
+            total_label = itemView.findViewById(R.id.label_total_duration);
+            on_label = itemView.findViewById(R.id.label_on_duration);
+            off_label = itemView.findViewById(R.id.label_off_duration);
             total_dur = itemView.findViewById(R.id.text_total_duration);
             on_dur = itemView.findViewById(R.id.text_on_duration);
             off_dur = itemView.findViewById(R.id.text_off_duration);
             connectingText = itemView.findViewById(R.id.text_connecting);
             connectingProgress = itemView.findViewById(R.id.connecting_progress);
+            radioCSV = itemView.findViewById(R.id.radio_csv);
+            customCSV = itemView.findViewById(R.id.radio_custom);
+            uploadCSV = itemView.findViewById(R.id.button_upload_csv);
             testHaptic = itemView.findViewById(R.id.test_haptic_button);
+            csvDropdown = itemView.findViewById(R.id.csv_spinner);
+            csvDropdown.setVisibility(View.INVISIBLE);
+            uploadCSV.setVisibility(View.INVISIBLE);
+
+            radioCSV.setOnClickListener(view -> {
+                radioCSV.setChecked(true);
+                customCSV.setChecked(false);
+                    updateUsingCSV(sensorList.get(getAdapterPosition()).uid, true);
+                    total_dur.setVisibility(View.INVISIBLE);
+                    on_dur.setVisibility(View.INVISIBLE);
+                    off_dur.setVisibility(View.INVISIBLE);
+                    total_label.setVisibility(View.INVISIBLE);
+                    on_label.setVisibility(View.INVISIBLE);
+                    off_label.setVisibility(View.INVISIBLE);
+                    csvDropdown.setVisibility(View.VISIBLE);
+                    uploadCSV.setVisibility(View.VISIBLE);
+            });
+
+            customCSV.setOnClickListener(view -> {
+                radioCSV.setChecked(false);
+                customCSV.setChecked(true);
+                    updateUsingCSV(sensorList.get(getAdapterPosition()).uid, false);
+                    total_dur.setVisibility(View.VISIBLE);
+                    on_dur.setVisibility(View.VISIBLE);
+                    off_dur.setVisibility(View.VISIBLE);
+                    total_label.setVisibility(View.VISIBLE);
+                    on_label.setVisibility(View.VISIBLE);
+                    off_label.setVisibility(View.VISIBLE);
+                    csvDropdown.setVisibility(View.INVISIBLE);
+                    uploadCSV.setVisibility(View.INVISIBLE);
+            });
 
             //text changed listeners
             deviceName.addTextChangedListener(new TextWatcher() {
@@ -192,6 +253,10 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                                           int before, int count) {}
             });
 
+        }
+
+        private void updateUsingCSV(String id, boolean using) {
+            MainActivityContainer.getSensorById(id).usingCSV = using;
         }
 
         private void updateFriendlyName(String id, String s) {

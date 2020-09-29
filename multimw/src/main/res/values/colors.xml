@@ -32,6 +32,7 @@
 
 <resources>
     <color name="colorAccent">#00D0B6</color>
+    <color name="colorAccentShy">#DFF9F6</color>
     <color name="colorPrimary">#0082D0</color>
     <color name="colorPrimaryDark">#001AD0</color>
     <color name="colorAccent2">#B600D0</color>

@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -20,6 +21,11 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.module.Haptic;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -49,7 +55,6 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         //button controls
         isLocked = false;
         isRecording = false;
@@ -96,20 +101,48 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
                 return true;
             } else {
                 //send haptic
-                SensorDevice currSensor = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
-                MetaWearBoard board = MainActivityContainer.getStateToBoards().get(v.getTag().toString());
-                if(currSensor != null && board != null) {
-                    for (int i = 0; i < currSensor.totalCycles; i++) {
-                        board.getModule(Haptic.class).startMotor((short) (currSensor.onDuration * 1000));
+                SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
+                MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.uid);
+                if(board != null) {
+                    if(s.usingCSV) {
                         try {
-                            Thread.sleep((long) (currSensor.onDuration * 1000) + (long) (currSensor.offDuration * 1000));
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            int resourceId = R.raw.class.getField(s.csvFile).getInt(R.raw.class.getField(s.csvFile));
+                            InputStream is = getResources().openRawResource(resourceId);
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+                            String line = reader.readLine();
+                            while((line = reader.readLine()) != null) {
+                                String[] tokens = line.split(",");
+                                try {
+                                    float onTime = Float.parseFloat(tokens[0]) * 1000;
+                                    float offTime = Float.parseFloat(tokens[1]) * 1000;
+                                    board.getModule(Haptic.class).startMotor((short) onTime);
+                                    try {
+                                        Thread.sleep((long) (onTime + offTime));
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                catch (NumberFormatException e) {
+                                    e.printStackTrace();
+                                    Toast.makeText(getActivity().getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
+                                    break;
+                                }
+                            }
+                        }
+                        catch (IOException | NoSuchFieldException | IllegalAccessException e) {
+                            Toast.makeText(getActivity().getApplicationContext(), "File not found.", Toast.LENGTH_SHORT).show();
                         }
                     }
-                }
-                else {
-                    v.setBackgroundResource(R.color.sensorboxError);
+                    else {
+                        for (int i = 0; i < s.totalCycles; i++) {
+                            board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
+                            try {
+                                Thread.sleep((long) (s.onDuration * 1000) + (long) (s.offDuration * 1000));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
                 }
             }
             return true;
@@ -125,6 +158,11 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
                     if (currentlyDragging != null) {
                         currentlyDragging.setX(event.getX());
                         currentlyDragging.setY(event.getY());
+                        SensorDevice s = MainActivityContainer.getSensorById(currentlyDragging.getTag().toString());
+                        if(s != null) {
+                            s.x_loc = event.getX();
+                            s.y_loc = event.getY();
+                        }
                         currentlyDragging = null;
                     }
                     return true;
@@ -147,7 +185,13 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
             System.out.println("UID: " + s.uid);
             sensorbox.setTag(s.uid);
             sensorbox.setBackgroundResource(R.color.sensorboxDefault);
-            sensorbox.setX(i * 300);
+            if(s.x_loc == 0) {
+                sensorbox.setX(i * 300);
+            }
+            else {
+                sensorbox.setX(s.x_loc);
+                sensorbox.setY(s.y_loc);
+            }
             sensorbox.setTextSize(24);
             sensorbox.setPadding(16, 16, 16, 16);
             ConstraintLayout.LayoutParams clpSensorbox = new ConstraintLayout.LayoutParams(

@@ -16,6 +16,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
@@ -27,7 +28,15 @@ import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
+import com.opencsv.CSVReader;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 
 import bolts.Capture;
@@ -147,13 +156,43 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
     public void onTestHapticClick(SensorDevice s) {
         MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.uid);
         if(board != null) {
-            for (int i = 0; i < s.totalCycles; i++) {
-                board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
-                System.out.println("buzz " + i);
+            if(s.usingCSV) {
                 try {
-                    Thread.sleep((long) (s.onDuration * 1000) + (long) (s.offDuration * 1000));
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    int resourceId = R.raw.class.getField(s.csvFile).getInt(R.raw.class.getField(s.csvFile));
+                    InputStream is = getResources().openRawResource(resourceId);
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+                    String line = reader.readLine();
+                    while((line = reader.readLine()) != null) {
+                        String[] tokens = line.split(",");
+                        try {
+                            float onTime = Float.parseFloat(tokens[0]) * 1000;
+                            float offTime = Float.parseFloat(tokens[1]) * 1000;
+                            board.getModule(Haptic.class).startMotor((short) onTime);
+                            try {
+                                Thread.sleep((long) (onTime + offTime));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        catch (NumberFormatException e) {
+                            e.printStackTrace();
+                            Toast.makeText(getActivity().getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
+                            break;
+                        }
+                    }
+                }
+                catch (IOException | NoSuchFieldException | IllegalAccessException e) {
+                    Toast.makeText(getActivity().getApplicationContext(), "File not found.", Toast.LENGTH_SHORT).show();
+                }
+            }
+            else {
+                for (int i = 0; i < s.totalCycles; i++) {
+                    board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
+                    try {
+                        Thread.sleep((long) (s.onDuration * 1000) + (long) (s.offDuration * 1000));
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }

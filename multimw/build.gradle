@@ -64,6 +64,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     implementation rootProject.ext.metawearSdk
     implementation 'com.mbientlab.bletoolbox:scanner:0.2.3'
+    implementation 'com.opencsv:opencsv:4.6'
     implementation "com.android.support:appcompat-v7:$rootProject.ext.supportLibVersion"
     implementation "com.android.support:design:$rootProject.ext.supportLibVersion"
         def room_version = "2.2.5"
