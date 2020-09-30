@@ -160,14 +160,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@color/colorAccentShy"
                     android:dropDownSelector="@color/colorAccent2" />
 
-                <Button
-                    android:id="@+id/button_upload_csv"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="UPLOAD NEW" />
             </LinearLayout>
         </RadioGroup>
 

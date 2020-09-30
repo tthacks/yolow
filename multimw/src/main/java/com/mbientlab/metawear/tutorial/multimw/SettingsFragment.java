@@ -28,15 +28,7 @@ import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
-import com.opencsv.CSVReader;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
+import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import java.util.ArrayList;
 
 import bolts.Capture;
@@ -152,38 +144,38 @@ public class SettingsFragment extends Fragment implements ServiceConnection, OnT
         adapter.setSensorList(new ArrayList<>(MainActivityContainer.getDeviceStates().values()));
     }
 
+    private void sendHapticFromCSV(String filename, MetaWearBoard board) {
+            HapticCSV file = MainActivityContainer.csvFiles.get(filename);
+            if(file != null) {
+                System.out.println("on: " + file.getOnTime());
+                System.out.println("off" + file.getOffTime());
+                String[] onTime = file.getOnTime().split(",");
+                String[] offTime = file.getOffTime().split(",");
+                for (int i = 0; i < onTime.length; i++) {
+                    try {
+                        float on = Float.parseFloat(onTime[i]) * 1000;
+                        float off = Float.parseFloat(offTime[i]) * 1000;
+                        board.getModule(Haptic.class).startMotor((short) on);
+                        try {
+                            Thread.sleep((long) (on + off));
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                        Toast.makeText(getActivity().getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
+                        break;
+                    }
+                }
+            }
+    }
+
     @Override
     public void onTestHapticClick(SensorDevice s) {
         MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.uid);
         if(board != null) {
             if(s.usingCSV) {
-                try {
-                    int resourceId = R.raw.class.getField(s.csvFile).getInt(R.raw.class.getField(s.csvFile));
-                    InputStream is = getResources().openRawResource(resourceId);
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-                    String line = reader.readLine();
-                    while((line = reader.readLine()) != null) {
-                        String[] tokens = line.split(",");
-                        try {
-                            float onTime = Float.parseFloat(tokens[0]) * 1000;
-                            float offTime = Float.parseFloat(tokens[1]) * 1000;
-                            board.getModule(Haptic.class).startMotor((short) onTime);
-                            try {
-                                Thread.sleep((long) (onTime + offTime));
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        catch (NumberFormatException e) {
-                            e.printStackTrace();
-                            Toast.makeText(getActivity().getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
-                            break;
-                        }
-                    }
-                }
-                catch (IOException | NoSuchFieldException | IllegalAccessException e) {
-                    Toast.makeText(getActivity().getApplicationContext(), "File not found.", Toast.LENGTH_SHORT).show();
-                }
+                sendHapticFromCSV(s.csvFile, board);
             }
             else {
                 for (int i = 0; i < s.totalCycles; i++) {

@@ -33,6 +33,7 @@ package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -43,22 +44,22 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevicesAdapter.SensorViewHolder> {
 
     private Context context;
     private List<SensorDevice> sensorList;
     private OnTestHapticClickListener testHapticClickListener;
-    private List<String> csvSelect;
 
     public ConnectedDevicesAdapter(Context context, OnTestHapticClickListener hapticClickListener) {
         this.context = context;
@@ -68,15 +69,9 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
     @NonNull
     @Override
     public SensorViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        csvSelect = new ArrayList<>();
-        Field[] fields = R.raw.class.getFields();
-        for(int x = 0; x < fields.length; x++) {
-            csvSelect.add(fields[x].getName());
-        }
-
         View view = LayoutInflater.from(context).inflate(R.layout.sensor_status_w_csv, viewGroup, false);
         return new SensorViewHolder(view);
-    }
+}
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -86,25 +81,18 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         sensorViewHolder.total_dur.setText("" + sensorList.get(i).totalCycles);
         sensorViewHolder.on_dur.setText("" + sensorList.get(i).onDuration);
         sensorViewHolder.off_dur.setText("" + sensorList.get(i).offDuration);
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(this.context, android.R.layout.simple_spinner_item, csvSelect);
-        arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        sensorViewHolder.csvDropdown.setAdapter(arrayAdapter);
+        sensorViewHolder.testHaptic.setOnClickListener(v -> testHapticClickListener.onTestHapticClick(sensorList.get(i)));
+
         sensorViewHolder.csvDropdown.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                MainActivityContainer.getSensorById(sensorList.get(i).uid).csvFile = csvSelect.get(position);
+            public void onItemSelected(AdapterView<?> adapterView, View view, int x, long l) {
+                sensorList.get(i).csvFile = sensorViewHolder.csvFileNames.get(x);
             }
+
             @Override
-            public void onNothingSelected(AdapterView <?> parent) {
-                MainActivityContainer.getSensorById(sensorList.get(i).uid).csvFile = csvSelect.get(0);
-            }
+            public void onNothingSelected(AdapterView<?> adapterView) {}
         });
 
-        sensorViewHolder.testHaptic.setOnClickListener(v -> testHapticClickListener.onTestHapticClick(sensorList.get(i)));
-        sensorViewHolder.uploadCSV.setOnClickListener(v -> {
-            //TODO: upload csv files
-            System.out.println("TODO: Not yet implemented.");
-        });
 
         if (sensorList.get(i).connecting) {
             sensorViewHolder.connectingProgress.setVisibility(View.VISIBLE);
@@ -133,12 +121,13 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         EditText deviceName, total_dur, on_dur, off_dur;
         RadioButton radioCSV, customCSV;
         ProgressBar connectingProgress;
-        Button testHaptic, uploadCSV;
+        Button testHaptic;
         Spinner csvDropdown;
-
+        List<String> csvFileNames;
 
         SensorViewHolder(@NonNull final View itemView) {
             super(itemView);
+            csvFileNames = new ArrayList<>(MainActivityContainer.csvFiles.keySet());
             deviceName = itemView.findViewById(R.id.status_device_name);
             deviceAddress = itemView.findViewById(R.id.status_mac_address);
             total_label = itemView.findViewById(R.id.label_total_duration);
@@ -151,16 +140,17 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
             connectingProgress = itemView.findViewById(R.id.connecting_progress);
             radioCSV = itemView.findViewById(R.id.radio_csv);
             customCSV = itemView.findViewById(R.id.radio_custom);
-            uploadCSV = itemView.findViewById(R.id.button_upload_csv);
             testHaptic = itemView.findViewById(R.id.test_haptic_button);
             csvDropdown = itemView.findViewById(R.id.csv_spinner);
+            ArrayAdapter<String> dropdownAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, csvFileNames);
+            dropdownAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            csvDropdown.setAdapter(dropdownAdapter);
             csvDropdown.setVisibility(View.INVISIBLE);
-            uploadCSV.setVisibility(View.INVISIBLE);
 
             radioCSV.setOnClickListener(view -> {
                 radioCSV.setChecked(true);
                 customCSV.setChecked(false);
-                    updateUsingCSV(sensorList.get(getAdapterPosition()).uid, true);
+                MainActivityContainer.getSensorById(sensorList.get(getAdapterPosition()).uid).usingCSV = true;
                     total_dur.setVisibility(View.INVISIBLE);
                     on_dur.setVisibility(View.INVISIBLE);
                     off_dur.setVisibility(View.INVISIBLE);
@@ -168,13 +158,12 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                     on_label.setVisibility(View.INVISIBLE);
                     off_label.setVisibility(View.INVISIBLE);
                     csvDropdown.setVisibility(View.VISIBLE);
-                    uploadCSV.setVisibility(View.VISIBLE);
             });
 
             customCSV.setOnClickListener(view -> {
                 radioCSV.setChecked(false);
                 customCSV.setChecked(true);
-                    updateUsingCSV(sensorList.get(getAdapterPosition()).uid, false);
+                MainActivityContainer.getSensorById(sensorList.get(getAdapterPosition()).uid).usingCSV = false;
                     total_dur.setVisibility(View.VISIBLE);
                     on_dur.setVisibility(View.VISIBLE);
                     off_dur.setVisibility(View.VISIBLE);
@@ -182,38 +171,30 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                     on_label.setVisibility(View.VISIBLE);
                     off_label.setVisibility(View.VISIBLE);
                     csvDropdown.setVisibility(View.INVISIBLE);
-                    uploadCSV.setVisibility(View.INVISIBLE);
             });
 
             //text changed listeners
             deviceName.addTextChangedListener(new TextWatcher() {
-
             public void afterTextChanged(Editable s) {
                 String elementId = sensorList.get(getAdapterPosition()).uid;
-                updateFriendlyName(elementId, s.toString());
+                MainActivityContainer.getSensorById(elementId).friendlyName = s.toString();
             }
-
             public void beforeTextChanged(CharSequence s, int start,
-                                          int count, int after) {
-            }
-
+                                          int count, int after) {}
             public void onTextChanged(CharSequence s, int start,
-                                      int before, int count) {
-                }
+                                      int before, int count) {}
         });
             total_dur.addTextChangedListener(new TextWatcher() {
 
                 public void afterTextChanged(Editable s) {
                     String elementId = sensorList.get(getAdapterPosition()).uid;
                     try {
-                        int val = Integer.parseInt(s.toString());
-                        updateCycleDuration(elementId, val);
+                        MainActivityContainer.getSensorById(elementId).totalCycles = Integer.parseInt(s.toString());
                     } catch(NumberFormatException ignored) {}
                 }
 
                 public void beforeTextChanged(CharSequence s, int start,
                                               int count, int after) {}
-
                 public void onTextChanged(CharSequence s, int start,
                                           int before, int count) {}
             });
@@ -223,14 +204,11 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                 public void afterTextChanged(Editable s) {
                     String elementId = sensorList.get(getAdapterPosition()).uid;
                     try {
-                        float val = Float.parseFloat(s.toString());
-                        updateOnOffDuration(elementId, val, true);
+                        MainActivityContainer.getSensorById(elementId).onDuration = Float.parseFloat(s.toString());
                     } catch (NumberFormatException ignored) {}
                 }
-
                 public void beforeTextChanged(CharSequence s, int start,
                                               int count, int after) {}
-
                 public void onTextChanged(CharSequence s, int start,
                                           int before, int count) {}
             });
@@ -240,41 +218,15 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
                 public void afterTextChanged(Editable s) {
                     String elementId = sensorList.get(getAdapterPosition()).uid;
                     try {
-                        float val = Float.parseFloat(s.toString());
-                        updateOnOffDuration(elementId, val, false);
+                        MainActivityContainer.getSensorById(elementId).offDuration = Float.parseFloat(s.toString());
                     }
                     catch(NumberFormatException ignored) {}
                 }
-
                 public void beforeTextChanged(CharSequence s, int start,
                                               int count, int after) {}
-
                 public void onTextChanged(CharSequence s, int start,
                                           int before, int count) {}
             });
-
-        }
-
-        private void updateUsingCSV(String id, boolean using) {
-            MainActivityContainer.getSensorById(id).usingCSV = using;
-        }
-
-        private void updateFriendlyName(String id, String s) {
-            MainActivityContainer.getSensorById(id).friendlyName = s;
-        }
-
-        private void updateCycleDuration(String id, int length) {
-            MainActivityContainer.getSensorById(id).totalCycles = length;
-
-        }
-
-        private void updateOnOffDuration(String id, float length, boolean isOn) {
-            if(isOn) {
-                MainActivityContainer.getSensorById(id).onDuration = length;
-            }
-            else {
-                MainActivityContainer.getSensorById(id).offDuration = length;
-            }
         }
     }
 }

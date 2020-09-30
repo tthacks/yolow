@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context="com.mbientlab.metawear.tutorial.multimw.MainActivity">
+    tools:context="com.mbientlab.metawear.tutorial.multimw.MainActivityContainer">
 
     <android.support.design.widget.AppBarLayout
         android:id="@+id/appBarLayout"
@@ -49,10 +49,23 @@
         android:id="@+id/scan_devices_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
         android:text="SCAN DEVICES"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_bar" />
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/upload_csv_button" />
+
+    <Button
+        android:id="@+id/upload_csv_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="UPLOAD CSV"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
+        app:layout_constraintEnd_toStartOf="@+id/scan_devices_button"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <LinearLayout
         android:id="@+id/bottom_bar"
