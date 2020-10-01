@@ -68,7 +68,7 @@ public class MainActivityContainer extends AppCompatActivity {
                 initSettings.setVisibility(View.GONE);
                 goto_human_button.setBackgroundResource(R.color.colorPrimary);
                 goto_settings_button.setBackgroundResource(R.color.colorAccent);
-                scan_devices_button.setVisibility(View.GONE);
+                scan_devices_button.setVisibility(View.VISIBLE);
                 upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new HumanFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
@@ -82,7 +82,7 @@ public class MainActivityContainer extends AppCompatActivity {
                 viewingSettings = true;
                 goto_human_button.setBackgroundResource(R.color.colorAccent);
                 goto_settings_button.setBackgroundResource(R.color.colorPrimary);
-                scan_devices_button.setVisibility(View.VISIBLE);
+                scan_devices_button.setVisibility(View.GONE);
                 upload_csv_button.setVisibility(View.VISIBLE);
                 Fragment fragment = new PresetFragment();
                 FragmentTransaction transaction = fm.beginTransaction();

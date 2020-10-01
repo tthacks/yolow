@@ -15,6 +15,9 @@ public interface PresetDao {
     @Query("SELECT * FROM presets")
     List<Preset> loadAllPresets();
 
+    @Query("SELECT name FROM presets")
+    List<String> loadAllPresetNames();
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertPreset(Preset p);
 

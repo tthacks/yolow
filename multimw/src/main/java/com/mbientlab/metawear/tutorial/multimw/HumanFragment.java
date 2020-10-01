@@ -1,49 +1,149 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.bluetooth.BluetoothDevice;
 import android.content.ClipData;
 import android.content.ClipDescription;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.Route;
+import com.mbientlab.metawear.Subscriber;
+import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.module.Accelerometer;
+import com.mbientlab.metawear.module.AccelerometerBosch;
+import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Haptic;
+import com.mbientlab.metawear.module.Switch;
+import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
+import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class HumanFragment extends Fragment implements View.OnTouchListener, View.OnDragListener {
+import bolts.Capture;
+import bolts.Continuation;
 
+public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
+
+    private BtleService.LocalBinder binder;
     private boolean isLocked, isRecording;
-    private View currentlyDragging = null;
+    private View lastSelected = null;
+    private EditText sensorName;
+    private Spinner sensorPreset;
+    private PresetDatabase pDatabase;
+    private List<String> presets;
+    private ArrayAdapter<String> presetAdapter;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Activity owner = getActivity();
+        owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
+        presets = new ArrayList<>();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        getActivity().getApplicationContext().unbindService(this);
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        binder= (BtleService.LocalBinder) service;
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {}
+
+
+    public void addNewDevice(BluetoothDevice btDevice) {
+
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName());
+        final MetaWearBoard newBoard= binder.getMetaWearBoard(btDevice);
+        MainActivityContainer.getDeviceStates().put(newDeviceState.uid, newDeviceState);
+        retrieveSensors();
+        MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
+
+        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
+        final Capture<Accelerometer> accelCapture = new Capture<>();
+
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
+            MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
+            retrieveSensors();}
+        ));
+        newBoard.connectAsync().onSuccessTask(task -> {
+            getActivity().runOnUiThread(() -> {
+                newDeviceState.connecting= false;
+                MainActivityContainer.getSensorById(newDeviceState.uid).connecting = false;
+                retrieveSensors();
+            });
+
+            final Accelerometer accelerometer = newBoard.getModule(Accelerometer.class);
+            accelCapture.set(accelerometer);
+
+            final AsyncDataProducer orientation;
+            if (accelerometer instanceof AccelerometerBosch) {
+                orientation = ((AccelerometerBosch) accelerometer).orientation();
+            } else {
+                orientation = ((AccelerometerMma8452q) accelerometer).orientation();
+            }
+            orientCapture.set(orientation);
+
+            return orientation.addRouteAsync(source -> source.stream((data, env) -> {
+                getActivity().runOnUiThread(() -> {
+                });
+            }));
+        }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> getActivity().runOnUiThread(() -> {
+        })))).continueWith((Continuation<Route, Void>) task -> {
+            if (task.isFaulted()) {
+                if (!newBoard.isConnected()) {
+                    getActivity().runOnUiThread(() -> MainActivityContainer.getDeviceStates().remove(newDeviceState.uid));
+                    retrieveSensors();
+                } else {
+                    Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
+                    newBoard.tearDown();
+                    newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
+                        MainActivityContainer.getDeviceStates().remove(newDeviceState.uid);
+                        retrieveSensors();
+                        return null;
+                    });
+                }
+            } else {
+                orientCapture.get().start();
+                accelCapture.get().start();
+            }
+            return null;
+        });
     }
 
     @Override
@@ -56,12 +156,20 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
         //button controls
         isLocked = false;
         isRecording = false;
-
+        sensorName = view.findViewById(R.id.sensor_name);
+        sensorPreset = view.findViewById(R.id.sensor_preset_select);
+        presetAdapter = new ArrayAdapter<>(getActivity().getApplicationContext(), android.R.layout.simple_spinner_item, presets);
+        retrievePresets();
         Button lock_button = view.findViewById(R.id.button_lock);
         Button record_button = view.findViewById(R.id.button_record);
+        if(lastSelected == null) {
+            sensorName.setClickable(false);
+            sensorPreset.setClickable(false);
+        }
         lock_button.setOnClickListener(v -> {
             isLocked = !isLocked;
             if (isLocked) {
@@ -81,6 +189,22 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
             }
         });
 
+        sensorName.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                if(lastSelected != null) {
+                    SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
+                    s.friendlyName = editable.toString();
+                }
+            }
+        });
+
     }
 
     @Override
@@ -91,6 +215,7 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
 
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
+        SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             if (!isLocked) {
                 ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
@@ -98,11 +223,13 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
                 ClipData data = new ClipData(v.getTag().toString(), mimeTypes, item);
                 View.DragShadowBuilder dragshadow = new View.DragShadowBuilder(v);
                 v.startDrag(data, dragshadow, null, 0);
-                currentlyDragging = v;
+                lastSelected = v;
+                sensorName.setClickable(true);
+                sensorName.setText(s.friendlyName);
+                sensorPreset.setClickable(true);
                 return true;
             } else {
                 //send haptic
-                SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
                 MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.uid);
                 if(board != null) {
                     if(s.usingCSV) {
@@ -144,7 +271,7 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
                     }
                 } catch (NumberFormatException e) {
                     e.printStackTrace();
-                    Toast.makeText(getActivity().getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(Objects.requireNonNull(getActivity()).getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
                     break;
                 }
             }
@@ -156,15 +283,14 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
             int action = event.getAction();
             switch (action) {
                 case DragEvent.ACTION_DRAG_ENDED:
-                    if (currentlyDragging != null) {
-                        currentlyDragging.setX(event.getX());
-                        currentlyDragging.setY(event.getY());
-                        SensorDevice s = MainActivityContainer.getSensorById(currentlyDragging.getTag().toString());
+                    if (lastSelected != null) {
+                        lastSelected.setX(event.getX());
+                        lastSelected.setY(event.getY());
+                        SensorDevice s = MainActivityContainer.getSensorById(lastSelected.getTag().toString());
                         if(s != null) {
                             s.x_loc = event.getX();
                             s.y_loc = event.getY();
                         }
-                        currentlyDragging = null;
                     }
                     return true;
                 case DragEvent.ACTION_DRAG_STARTED:
@@ -202,5 +328,14 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
             sensorbox.setOnTouchListener(this);
             sensorbox.setOnDragListener(this);
         }
+    }
+
+    private void retrievePresets() {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+                final List<String> p_list = pDatabase.pDao().loadAllPresetNames();
+                getActivity().runOnUiThread(() -> {
+                        presets = p_list;
+                });
+        });
     }
 }
