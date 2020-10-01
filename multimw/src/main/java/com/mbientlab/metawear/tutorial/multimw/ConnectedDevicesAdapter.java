@@ -128,7 +128,7 @@ public class ConnectedDevicesAdapter extends RecyclerView.Adapter<ConnectedDevic
         SensorViewHolder(@NonNull final View itemView) {
             super(itemView);
             csvFileNames = new ArrayList<>(MainActivityContainer.csvFiles.keySet());
-            deviceName = itemView.findViewById(R.id.status_device_name);
+            deviceName = itemView.findViewById(R.id.preset_name);
             deviceAddress = itemView.findViewById(R.id.status_mac_address);
             total_label = itemView.findViewById(R.id.label_total_duration);
             on_label = itemView.findViewById(R.id.label_on_duration);

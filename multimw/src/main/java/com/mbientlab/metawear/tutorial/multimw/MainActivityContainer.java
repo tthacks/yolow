@@ -28,6 +28,7 @@ import java.util.Objects;
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     public static final int PICKFILE_REQUEST_CODE = 2;
+    private static int DEFAULT_INDEX = 0;
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
     public static HashMap<String, HapticCSV> csvFiles;
@@ -71,7 +72,7 @@ public class MainActivityContainer extends AppCompatActivity {
                 upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new HumanFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
-                transaction.replace(R.id.fragment_container, fragment, "human_fragment");
+                transaction.replace(R.id.fragment_container, fragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
             }
@@ -83,9 +84,9 @@ public class MainActivityContainer extends AppCompatActivity {
                 goto_settings_button.setBackgroundResource(R.color.colorPrimary);
                 scan_devices_button.setVisibility(View.VISIBLE);
                 upload_csv_button.setVisibility(View.VISIBLE);
-                Fragment fragment = new SettingsFragment();
+                Fragment fragment = new PresetFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
-                transaction.replace(R.id.fragment_container, fragment, "settings_fragment");
+                transaction.replace(R.id.fragment_container, fragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
             }
@@ -173,6 +174,14 @@ public class MainActivityContainer extends AppCompatActivity {
 
     public static SensorDevice getSensorById(String id) {
         return deviceStates.get(id);
+    }
+
+    public static void setDefaultIndex(int x) {
+        DEFAULT_INDEX = x;
+    }
+
+    public static int getDefaultIndex() {
+        return DEFAULT_INDEX;
     }
 }
 
