@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey;
 @Entity(tableName = "presets")
 public class Preset {
     @PrimaryKey (autoGenerate = true)
-    int id;
+    int _id;
     String name;
     boolean fromCSV;
     String csvFile;
@@ -18,11 +18,11 @@ public class Preset {
     float gyro_sample;
 
     public int getId() {
-        return id;
+        return _id;
     }
 
     public void setId(int id) {
-        this.id = id;
+        this._id = id;
     }
 
     public String getName() {

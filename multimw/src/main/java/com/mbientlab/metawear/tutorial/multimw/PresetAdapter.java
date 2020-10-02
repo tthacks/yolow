@@ -146,6 +146,9 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 on_label.setVisibility(View.INVISIBLE);
                 off_label.setVisibility(View.INVISIBLE);
                 csvDropdown.setVisibility(View.VISIBLE);
+                Preset p = pList.get(getAdapterPosition());
+                p.setFromCSV(true);
+                updatePreset(p);
             });
 
             customCSV.setOnClickListener(view -> {
@@ -158,6 +161,9 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 on_label.setVisibility(View.VISIBLE);
                 off_label.setVisibility(View.VISIBLE);
                 csvDropdown.setVisibility(View.INVISIBLE);
+                Preset p = pList.get(getAdapterPosition());
+                p.setFromCSV(false);
+                updatePreset(p);
             });
 
             //text changed listeners

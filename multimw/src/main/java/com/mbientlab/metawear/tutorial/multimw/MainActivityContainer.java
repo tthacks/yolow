@@ -32,7 +32,7 @@ public class MainActivityContainer extends AppCompatActivity {
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
     public static HashMap<String, HapticCSV> csvFiles;
-    private boolean viewingSettings = true;
+    private boolean viewingHuman = true;
     private FragmentManager fm;
 
     public MainActivityContainer() {
@@ -51,6 +51,7 @@ public class MainActivityContainer extends AppCompatActivity {
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
         Button upload_csv_button = findViewById(R.id.upload_csv_button);
+        upload_csv_button.setVisibility(View.GONE);
         scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivityContainer.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
         upload_csv_button.setOnClickListener(view -> {
             Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
@@ -62,12 +63,10 @@ public class MainActivityContainer extends AppCompatActivity {
 
         fm = getSupportFragmentManager();
         goto_human_button.setOnClickListener(view -> {
-            if(viewingSettings) {
-                viewingSettings = false;
-                View initSettings = findViewById(R.id.main_activity_content);
-                initSettings.setVisibility(View.GONE);
-                goto_human_button.setBackgroundResource(R.color.colorPrimary);
-                goto_settings_button.setBackgroundResource(R.color.colorAccent);
+            if(!viewingHuman) {
+                viewingHuman = true;
+                goto_human_button.setBackgroundResource(R.color.colorAccent);
+                goto_settings_button.setBackgroundResource(R.color.colorPrimary);
                 scan_devices_button.setVisibility(View.VISIBLE);
                 upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new HumanFragment();
@@ -78,8 +77,10 @@ public class MainActivityContainer extends AppCompatActivity {
             }
         });
         goto_settings_button.setOnClickListener(view -> {
-            if(!viewingSettings) {
-                viewingSettings = true;
+            if(viewingHuman) {
+                viewingHuman = false;
+                View initView = findViewById(R.id.main_activity_content);
+                initView.setVisibility(View.GONE);
                 goto_human_button.setBackgroundResource(R.color.colorAccent);
                 goto_settings_button.setBackgroundResource(R.color.colorPrimary);
                 scan_devices_button.setVisibility(View.GONE);
@@ -100,7 +101,7 @@ public class MainActivityContainer extends AppCompatActivity {
             if(data != null) {
                 BluetoothDevice selectedDevice = data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
                 if (selectedDevice != null) {
-                    ((SettingsFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
+                    ((HumanFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
                 }
             }
         }
@@ -134,7 +135,6 @@ public class MainActivityContainer extends AppCompatActivity {
                 offTime.append(tokens[1]).append(",");
             }
         }
-        System.out.println("On Time:" + onTime.toString());
         return new HapticCSV(uri.getLastPathSegment(), onTime.toString(), offTime.toString());
     }
 
@@ -170,6 +170,11 @@ public class MainActivityContainer extends AppCompatActivity {
 
     public static HashMap<String, SensorDevice> getDeviceStates() {
         return deviceStates;
+    }
+
+    public static int addDeviceToStates(SensorDevice s) {
+        deviceStates.put(s.getUid(), s);
+        return deviceStates.size();
     }
 
     public static SensorDevice getSensorById(String id) {

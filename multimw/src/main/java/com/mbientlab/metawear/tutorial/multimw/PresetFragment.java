@@ -39,16 +39,13 @@ public class PresetFragment extends Fragment {
         recyclerView.setAdapter(adapter);
         pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
         Button newPresetButton = view.findViewById(R.id.new_preset_button);
-        newPresetButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // String name, boolean fromCSV, String csvFile, int numCycles, float on_time, float off_time, float accel_sample, float gyro_sample
-                Preset new_p = new Preset("Preset " + adapter.getItemCount(), false, "", 2, 1.0f, 1.0f, 50, 50);
-                AppExecutors.getInstance().diskIO().execute(() -> {
-                    pDatabase.pDao().insertPreset(new_p);
-                    retrievePresets();
-                });
-            }
+        newPresetButton.setOnClickListener(view1 -> {
+            // String name, boolean fromCSV, String csvFile, int numCycles, float on_time, float off_time, float accel_sample, float gyro_sample
+            Preset new_p = new Preset("Preset " + adapter.getItemCount(), false, "", 2, 1.0f, 1.0f, 50, 50);
+            AppExecutors.getInstance().diskIO().execute(() -> {
+                pDatabase.pDao().insertPreset(new_p);
+                retrievePresets();
+            });
         });
     }
 

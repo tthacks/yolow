@@ -32,6 +32,7 @@
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/scan_devices_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/appBarLayout">
@@ -83,6 +84,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:background="@color/colorPrimary"
             android:padding="4dp"
             android:text="View Map" />
 
@@ -92,7 +94,7 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@color/colorPrimary"
+            android:background="@color/colorAccent"
             android:padding="4dp"
             android:text="View Settings" />
     </LinearLayout>

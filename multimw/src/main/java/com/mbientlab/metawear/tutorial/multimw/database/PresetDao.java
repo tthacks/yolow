@@ -27,6 +27,9 @@ public interface PresetDao {
     @Update
     void updatePreset(Preset p);
 
-    @Query("SELECT * FROM presets WHERE name = :name")
-    Preset loadPresetFromName(String name);
+    @Query("SELECT * FROM presets WHERE _id = :id")
+    Preset loadPresetFromId(int id);
+
+    @Query("SELECT _id FROM presets WHERE name = :name")
+    int getIdFromPresetName(String name);
 }

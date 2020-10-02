@@ -3,27 +3,12 @@
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/human_constraint_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_alignParentLeft="true"
     android:layout_alignParentEnd="false"
     android:layout_alignParentBottom="false">
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/sensorbox_area"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintBottom_toTopOf="@id/sensor_data_layout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:id="@+id/imageView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:srcCompat="@drawable/human_outline" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
         android:id="@+id/sensor_data_layout"
@@ -33,9 +18,9 @@
         android:background="@color/colorPrimary"
         android:orientation="horizontal"
         android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@id/lock_record_bar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <EditText
             android:id="@+id/sensor_name"
@@ -58,6 +43,20 @@
             android:minHeight="24dp"
             android:padding="8dp" />
     </LinearLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/sensorbox_area"
+        android:layout_width="match_parent"
+        android:layout_height="650dp"
+        android:layout_marginTop="64dp"
+        android:layout_marginBottom="64dp"
+        android:background="@drawable/human_outline"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
         android:id="@+id/lock_record_bar"
@@ -93,6 +92,5 @@
             android:padding="4dp"
             android:text="START RECORDING" />
     </LinearLayout>
-
 
 </android.support.constraint.ConstraintLayout>
