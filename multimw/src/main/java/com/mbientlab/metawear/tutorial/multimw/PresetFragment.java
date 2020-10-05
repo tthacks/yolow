@@ -10,7 +10,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
-import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
@@ -35,6 +34,7 @@ public class PresetFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
+        //TODO: Known bug: recycler does not scroll when >4 items are in it
         RecyclerView recyclerView = view.findViewById(R.id.presets);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);

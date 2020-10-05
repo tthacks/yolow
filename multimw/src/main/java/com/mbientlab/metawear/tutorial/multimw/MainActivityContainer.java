@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -20,15 +19,12 @@ import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
-import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 
 public class MainActivityContainer extends AppCompatActivity {
@@ -71,8 +67,8 @@ public class MainActivityContainer extends AppCompatActivity {
         goto_human_button.setOnClickListener(view -> {
             if(!viewingHuman) {
                 viewingHuman = true;
-                goto_human_button.setBackgroundResource(R.color.colorAccent);
-                goto_settings_button.setBackgroundResource(R.color.colorPrimary);
+                goto_human_button.setBackgroundResource(R.color.colorPrimary);
+                goto_settings_button.setBackgroundResource(R.color.colorAccent);
                 scan_devices_button.setVisibility(View.VISIBLE);
                 upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new HumanFragment();
