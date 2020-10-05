@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
+import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
