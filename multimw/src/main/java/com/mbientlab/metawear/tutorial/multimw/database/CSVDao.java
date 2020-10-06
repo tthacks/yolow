@@ -17,9 +17,9 @@ public interface CSVDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertCSVFile(HapticCSV csv);
 
-    @Delete
-    void deleteCSVFile(HapticCSV csv);
+    @Query("SELECT * FROM csv WHERE _id = :id")
+    HapticCSV loadCSVFileById(int id);
 
-    @Query("SELECT * FROM csv WHERE filename = :name")
-    HapticCSV loadCSVFileByName(String name);
+    @Query("SELECT * FROM csv WHERE filename = :filename")
+    HapticCSV loadCSVFileByName(String filename);
 }

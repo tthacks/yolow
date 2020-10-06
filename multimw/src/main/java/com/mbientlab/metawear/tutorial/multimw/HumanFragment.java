@@ -1,25 +1,17 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
-import android.app.ActionBar;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
-import android.content.ClipData;
-import android.content.ClipDescription;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.database.Cursor;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
-import android.support.constraint.ConstraintSet;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
-import android.text.Layout;
 import android.text.TextWatcher;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
@@ -29,46 +21,33 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CursorAdapter;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
-import com.mbientlab.metawear.Route;
-import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.module.Accelerometer;
-import com.mbientlab.metawear.module.AccelerometerBosch;
-import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Haptic;
-import com.mbientlab.metawear.module.Switch;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
-import org.w3c.dom.Text;
-
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import bolts.Capture;
-import bolts.Continuation;
 
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener, View.OnLongClickListener {
 
     private BtleService.LocalBinder binder;
     private boolean isLocked, isRecording;
     private TextView lastSelected = null;
+    private View sensorSettingsBar;
     private EditText sensorName;
     private Spinner presetSpinner;
     private PresetDatabase pDatabase;
@@ -101,6 +80,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
         csvDb = CSVDatabase.getInstance(getActivity().getApplicationContext());
         //button controls
+        sensorSettingsBar = view.findViewById(R.id.sensor_data_layout);
+        sensorSettingsBar.setVisibility(View.INVISIBLE);
         isLocked = false;
         isRecording = false;
         sensorName = view.findViewById(R.id.sensor_name);
@@ -114,7 +95,10 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
                     AppExecutors.getInstance().diskIO().execute(() -> {
                         final int preset_id = pDatabase.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
-                        getActivity().runOnUiThread(() -> {s.setPreset_id(preset_id);});
+                        getActivity().runOnUiThread(() -> {
+                            s.setPreset_id(preset_id);
+                            s.setPresetName((String) adapterView.getItemAtPosition(i));
+                        });
                     });
                 }
             }
@@ -126,18 +110,18 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         lock_button.setOnClickListener(v -> {
             isLocked = !isLocked;
             if (isLocked) {
-                lock_button.setText("UNLOCK");
+                lock_button.setText(R.string.unlock);
             } else {
-                lock_button.setText("LOCK");
+                lock_button.setText(R.string.lock);
             }
         });
         record_button.setOnClickListener(v -> {
             isRecording = !isRecording;
             if (isRecording) {
-                record_button.setText("STOP RECORDING");
+                record_button.setText(R.string.stop_recording);
                 lock_button.setEnabled(false);
             } else {
-                record_button.setText("START RECORDING");
+                record_button.setText(R.string.start_recording);
                 lock_button.setEnabled(true);
             }
         });
@@ -179,6 +163,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     public void addNewDevice(BluetoothDevice btDevice) {
         final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName());
+        newDeviceState.setPresetName(MainActivityContainer.getDefaultPresetName());
+        newDeviceState.setPreset_id(MainActivityContainer.getDefaultPresetId());
         final MetaWearBoard newBoard = binder.getMetaWearBoard(btDevice);
 
          MainActivityContainer.addDeviceToStates(newDeviceState);
@@ -188,20 +174,20 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.setConnecting(false);
+                retrieveSensors();
             });
             return null;
         });
     }
 
     private void addSensorBox(SensorDevice s, int idx) {
-        ConstraintLayout constraintLayout = getView().findViewById(R.id.human_constraint_layout);
+        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
         TextView newSensor = new TextView(getActivity().getApplicationContext());
-        System.out.println("making sensor " + s.getFriendlyName());
         newSensor.setText(s.getFriendlyName());
         newSensor.setTag(s.getUid());
-        if(s.getX_loc() != 0) {
-            newSensor.setX(idx * 300);
-            newSensor.setY(300);
+        if(s.getX_loc() == 0) {
+            newSensor.setX(0);
+            newSensor.setY(idx * 100);
         }
         else {
             newSensor.setX(s.getX_loc());
@@ -235,7 +221,14 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             }
             else {
                 lastSelected = (TextView) v;
+                sensorSettingsBar.setVisibility(View.VISIBLE);
                 sensorName.setText(s.getFriendlyName());
+                if(presets.indexOf(s.getPresetName()) > -1) { //preset selected
+                    presetSpinner.setSelection(presets.indexOf(s.getPresetName()));
+                }
+                else{
+                    presetSpinner.setSelection(presets.indexOf(MainActivityContainer.getDefaultPresetName()));
+                }
             }
             return true;
         }
@@ -283,9 +276,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return false;
     }
 
-    private void sendHapticFromCSV(String filename, MetaWearBoard board) {
+    private void sendHapticFromCSV(int fileId, MetaWearBoard board) {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            final HapticCSV file = csvDb.hapticsDao().loadCSVFileByName(filename);
+            final HapticCSV file = csvDb.hapticsDao().loadCSVFileById(fileId);
             getActivity().runOnUiThread(() -> {
                 if(file != null) {
                     String[] onTime = file.getOnTime().split(",");
@@ -302,10 +295,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                             }
                         } catch (NumberFormatException e) {
                             e.printStackTrace();
-                            Toast.makeText(Objects.requireNonNull(getActivity()).getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(Objects.requireNonNull(getActivity()).getApplicationContext(), "The file could not be parsed.", Toast.LENGTH_SHORT).show();
                             break;
                         }
                     }
+                }
+                else {
+                    System.out.println("The file could not be found.");
                 }
             });
         });
@@ -337,19 +333,20 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             AppExecutors.getInstance().diskIO().execute(() -> {
                 Preset p = pDatabase.pDao().loadPresetFromId(id);
                 if (p != null) {
+                    System.out.println("Playing preset " + p.getName());
                     if(p.isFromCSV()) {
                         sendHapticFromCSV(p.getCsvFile(), board);
                     }
                     else {
-            for (int i = 0; i < p.getNumCycles(); i++) {
-                board.getModule(Haptic.class).startMotor((short) (p.getOn_time() * 1000));
-                try {
-                    Thread.sleep((long) (p.getOn_time() * 1000) + (long) (p.getOff_time() * 1000));
-                } catch (InterruptedException e) {
-                        e.printStackTrace();
-                }
-            } //end for
-                }
+                        for (int i = 0; i < p.getNumCycles(); i++) {
+                            board.getModule(Haptic.class).startMotor((short) (p.getOn_time() * 1000));
+                            try {
+                                Thread.sleep((long) (p.getOn_time() * 1000) + (long) (p.getOff_time() * 1000));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        } //end for
+                    }
                 }
                 else {
                     System.out.println("No preset found. Id: " + id);

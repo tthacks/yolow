@@ -1,34 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright 2015 MbientLab Inc. All rights reserved.
-  ~
-  ~ IMPORTANT: Your use of this Software is limited to those specific rights
-  ~ granted under the terms of a software license agreement between the user who
-  ~ downloaded the software, his/her employer (which must be your employer) and
-  ~ MbientLab Inc, (the "License").  You may not use this Software unless you
-  ~ agree to abide by the terms of the License which can be found at
-  ~ www.mbientlab.com/terms . The License limits your use, and you acknowledge,
-  ~ that the  Software may not be modified, copied or distributed and can be used
-  ~ solely and exclusively in conjunction with a MbientLab Inc, product.  Other
-  ~ than for the foregoing purpose, you may not use, reproduce, copy, prepare
-  ~ derivative works of, modify, distribute, perform, display or sell this
-  ~ Software and/or its documentation for any purpose.
-  ~
-  ~ YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
-  ~ PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-  ~ INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
-  ~ NON-INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
-  ~ MBIENTLAB OR ITS LICENSORS BE LIABLE OR OBLIGATED UNDER CONTRACT, NEGLIGENCE,
-  ~ STRICT LIABILITY, CONTRIBUTION, BREACH OF WARRANTY, OR OTHER LEGAL EQUITABLE
-  ~ THEORY ANY DIRECT OR INDIRECT DAMAGES OR EXPENSES INCLUDING BUT NOT LIMITED
-  ~ TO ANY INCIDENTAL, SPECIAL, INDIRECT, PUNITIVE OR CONSEQUENTIAL DAMAGES, LOST
-  ~ PROFITS OR LOST DATA, COST OF PROCUREMENT OF SUBSTITUTE GOODS, TECHNOLOGY,
-  ~ SERVICES, OR ANY CLAIMS BY THIRD PARTIES (INCLUDING BUT NOT LIMITED TO ANY
-  ~ DEFENSE THEREOF), OR OTHER SIMILAR COSTS.
-  ~
-  ~ Should you have any questions regarding your right to use this Software,
-  ~ contact MbientLab Inc, at www.mbientlab.com.
-  -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/sensor_status_layout"
@@ -49,7 +19,8 @@
             android:layout_weight="10"
             android:ems="10"
             android:inputType="textPersonName"
-            android:textSize="24sp" />
+            android:textSize="24sp"
+            android:importantForAutofill="no" />
 
         <Button
             android:id="@+id/delete_preset_button"
@@ -58,7 +29,7 @@
             android:layout_height="40dp"
             android:layout_weight="1"
             android:padding="5dp"
-            android:text="X" />
+            android:text="@string/delete_x" />
 
     </LinearLayout>
 
@@ -92,14 +63,12 @@
                         android:id="@+id/label_total_duration"
                         android:layout_width="120dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="# Cycles" />
+                        android:text="@string/num_cycles" />
 
                     <EditText
                         android:id="@+id/text_total_duration"
                         android:layout_width="72dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:ems="10"
                         android:inputType="number" />
                 </LinearLayout>
@@ -107,21 +76,19 @@
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:orientation="horizontal">
 
                     <TextView
                         android:id="@+id/label_on_duration"
                         android:layout_width="120dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Duration ON (s)" />
+                        android:text="@string/duration_on" />
 
                     <EditText
                         android:id="@+id/text_on_duration"
                         android:layout_width="72dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
+
                         android:ems="10"
                         android:inputType="numberDecimal" />
 
@@ -130,21 +97,18 @@
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:orientation="horizontal">
 
                     <TextView
                         android:id="@+id/label_off_duration"
                         android:layout_width="120dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Duration OFF (s)" />
+                        android:text="@string/duration_off" />
 
                     <EditText
                         android:id="@+id/text_off_duration"
                         android:layout_width="72dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:ems="10"
                         android:inputType="numberDecimal" />
 
@@ -166,14 +130,22 @@
                 android:id="@+id/radio_csv"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="From CSV" />
+                android:text="@string/from_csv" />
+
+            <TextView
+                android:id="@+id/current_file_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="@string/no_current_file" />
 
             <Spinner
                 android:id="@+id/csv_spinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:dropDownSelector="@color/colorAccent2"
-                android:minHeight="24dp" />
+                android:minHeight="24dp"
+                android:padding="8dp" />
 
         </LinearLayout>
 
@@ -191,7 +163,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:checked="true"
-                android:text="Set as Default" />
+                android:text="@string/set_default" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -204,7 +176,7 @@
                     android:layout_width="120dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Accel sample rate (Hz) " />
+                    android:text="@string/accel_sample" />
 
                 <EditText
                     android:id="@+id/text_sample_accel"
@@ -227,7 +199,7 @@
                     android:layout_width="120dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Gyro sample rate (Hz)" />
+                    android:text="@string/gyro_sample" />
 
                 <EditText
                     android:id="@+id/text_sample_gyro"
@@ -242,6 +214,5 @@
         </LinearLayout>
 
     </RadioGroup>
-
 
 </LinearLayout>

@@ -51,6 +51,7 @@ import android.widget.TextView;
 
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
+import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
@@ -91,8 +92,9 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         presetViewHolder.accel_sample.setText("" + pList.get(i).getAccel_sample());
         presetViewHolder.set_default_switch.setChecked(i == MainActivityContainer.getDefaultIndex());
         presetViewHolder.customCSV.setChecked(!pList.get(i).isFromCSV());
+        presetViewHolder.csv_text.setText(pList.get(i).getCsvFileName());
         presetViewHolder.radioCSV.setChecked(pList.get(i).isFromCSV());
-        presetViewHolder.spinner.setSelection(csvList.indexOf(pList.get(i).getCsvFile()));
+        presetViewHolder.spinner.setSelection(0);
         if(pList.get(i).isFromCSV()) {
             presetViewHolder.total_dur.setVisibility(View.INVISIBLE);
             presetViewHolder.on_dur.setVisibility(View.INVISIBLE);
@@ -129,7 +131,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     }
 
     class SensorViewHolder extends RecyclerView.ViewHolder {
-        TextView total_label, on_label, off_label;
+        TextView total_label, on_label, off_label, csv_text;
         Button delete_button;
         EditText presetName, total_dur, on_dur, off_dur, accel_sample, gyro_sample;
         RadioButton radioCSV, customCSV;
@@ -148,14 +150,17 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             on_dur = itemView.findViewById(R.id.text_on_duration);
             off_dur = itemView.findViewById(R.id.text_off_duration);
             radioCSV = itemView.findViewById(R.id.radio_csv);
+            csv_text = itemView.findViewById(R.id.current_file_text);
             spinner = itemView.findViewById(R.id.csv_spinner);
             retrieveCSVs(spinner);
+
 
             accel_sample = itemView.findViewById(R.id.text_sample_accel);
             gyro_sample = itemView.findViewById(R.id.text_sample_gyro);
             set_default_switch = itemView.findViewById(R.id.set_default_switch);
+
             set_default_switch.setOnClickListener(view -> {
-                MainActivityContainer.setDefaultIndex(getAdapterPosition());
+                MainActivityContainer.setDefaultIndex(getAdapterPosition(), pList.get(getAdapterPosition()).getId(), pList.get(getAdapterPosition()).getName());
                 notifyDataSetChanged();
             });
 
@@ -192,11 +197,16 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             delete_button.setOnClickListener(view -> {
                 deletePreset(pList.get(getAdapterPosition()));
                 pList.remove(getAdapterPosition());
-                if(MainActivityContainer.getDefaultIndex() == getAdapterPosition()) { //is the default
-                    MainActivityContainer.setDefaultIndex(0);
+                if(pList.size() == 0) {
+                    MainActivityContainer.setDefaultIndex(-1, -1, "");
+                }
+                else if (MainActivityContainer.getDefaultIndex() == getAdapterPosition()) { //is the default - reset to first in list
+                    MainActivityContainer.setDefaultIndex(0, pList.get(0).getId(), pList.get(0).getName());
                 }
                 else if(getAdapterPosition() < MainActivityContainer.getDefaultIndex()) {
-                    MainActivityContainer.setDefaultIndex(MainActivityContainer.getDefaultIndex() - 1);
+                    int newIndex = MainActivityContainer.getDefaultIndex() - 1;
+                       Preset p = pList.get(newIndex);
+                       MainActivityContainer.setDefaultIndex(newIndex, p.getId(), p.getName());
                 }
                 notifyDataSetChanged();
             });
@@ -204,10 +214,12 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int selected, long l) {
-                    //TODO: fix csv picker
-//                    pList.get(getAdapterPosition()).setCsvFile((String)adapterView.getItemAtPosition(selected));
-//                    updatePreset(pList.get(getAdapterPosition()));
-//                    notifyDataSetChanged();
+                    if(selected > 0) {
+                        Preset p = pList.get(getAdapterPosition());
+                        String filenameSelected = (String) adapterView.getItemAtPosition(selected);
+                        csv_text.setText(filenameSelected);
+                        updateCSVFileInPreset(p, filenameSelected);
+                    }
                 }
                 @Override
                 public void onNothingSelected(AdapterView<?> adapterView) {}
@@ -298,6 +310,19 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         }
     }
 
+    public void updateCSVFileInPreset(Preset p, String filename) {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            HapticCSV h = csvDatabase.hapticsDao().loadCSVFileByName(filename);
+            ((MainActivityContainer)context).runOnUiThread(() -> {
+                if(h != null) {
+                    p.setCsvFileName(h.getFilename());
+                    p.setCsvFile(h.getId());
+                    updatePreset(p);
+                }
+        });
+    });
+    }
+
     public void updatePreset(Preset p) {
             AppExecutors.getInstance().diskIO().execute(() -> pDatabase.pDao().updatePreset(p));
 }
@@ -307,13 +332,16 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     }
 
     public void retrieveCSVs(Spinner spinner) {
+        System.out.println("Retrieving csvs");
         AppExecutors.getInstance().diskIO().execute(() -> {
             List<String> csvs = csvDatabase.hapticsDao().loadAllCSVFileNames();
             ((MainActivityContainer)context).runOnUiThread(() -> {
                 csvList = csvs;
+                csvList.add(0, "");
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, csvList);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                spinner.setAdapter(adapter);});
+                spinner.setAdapter(adapter);
+            });
         });
     }
 

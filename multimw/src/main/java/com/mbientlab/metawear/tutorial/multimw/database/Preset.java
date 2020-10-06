@@ -10,7 +10,8 @@ public class Preset {
     int _id;
     String name;
     boolean fromCSV;
-    String csvFile;
+    int csvFile;
+    String csvFileName;
     int numCycles;
     float on_time;
     float off_time;
@@ -19,10 +20,6 @@ public class Preset {
 
     public int getId() {
         return _id;
-    }
-
-    public void setId(int id) {
-        this._id = id;
     }
 
     public String getName() {
@@ -41,13 +38,17 @@ public class Preset {
         this.fromCSV = fromCSV;
     }
 
-    public String getCsvFile() {
+    public int getCsvFile() {
         return csvFile;
     }
 
-    public void setCsvFile(String csvFile) {
+    public void setCsvFile(int csvFile) {
         this.csvFile = csvFile;
     }
+
+    public String getCsvFileName() { return csvFileName; }
+
+    public void setCsvFileName(String csvFileName) { this.csvFileName = csvFileName; }
 
     public int getNumCycles() {
         return numCycles;
@@ -89,10 +90,11 @@ public class Preset {
         this.gyro_sample = gyro_sample;
     }
 
-    public Preset(@NonNull String name, boolean fromCSV, String csvFile, int numCycles, float on_time, float off_time, float accel_sample, float gyro_sample) {
+    public Preset(@NonNull String name, boolean fromCSV, int csvFile, String csvFileName, int numCycles, float on_time, float off_time, float accel_sample, float gyro_sample) {
         this.name = name;
         this.fromCSV = fromCSV;
         this.csvFile = csvFile;
+        this.csvFileName = csvFileName;
         this.numCycles = numCycles;
         this.on_time = on_time;
         this.off_time = off_time;

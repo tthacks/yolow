@@ -9,10 +9,9 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mbientlab.metawear.MetaWearBoard;
@@ -31,6 +30,8 @@ public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     public static final int PICKFILE_REQUEST_CODE = 2;
     private static int DEFAULT_INDEX = 0;
+    private static String DEFAULT_PRESET_NAME = "";
+    private static int DEFAULT_PRESET_ID = -1;
     private CSVDatabase csvDb;
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
@@ -49,6 +50,7 @@ public class MainActivityContainer extends AppCompatActivity {
         setContentView(R.layout.activity_main_container);
         csvDb = CSVDatabase.getInstance(this);
         //init button listeners
+        TextView title = findViewById(R.id.title);
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
@@ -67,6 +69,7 @@ public class MainActivityContainer extends AppCompatActivity {
         goto_human_button.setOnClickListener(view -> {
             if(!viewingHuman) {
                 viewingHuman = true;
+                title.setText(R.string.sensor_map_header);
                 goto_human_button.setBackgroundResource(R.color.colorPrimary);
                 goto_settings_button.setBackgroundResource(R.color.colorAccent);
                 scan_devices_button.setVisibility(View.VISIBLE);
@@ -81,6 +84,7 @@ public class MainActivityContainer extends AppCompatActivity {
         goto_settings_button.setOnClickListener(view -> {
             if(viewingHuman) {
                 viewingHuman = false;
+                title.setText(R.string.presets_header);
                 View initView = findViewById(R.id.main_activity_content);
                 initView.setVisibility(View.GONE);
                 goto_human_button.setBackgroundResource(R.color.colorAccent);
@@ -141,28 +145,6 @@ public class MainActivityContainer extends AppCompatActivity {
         return new HapticCSV(uri.getLastPathSegment(), onTime.toString(), offTime.toString());
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
     public static HashMap<String, MetaWearBoard> getStateToBoards() {
         return stateToBoards;
     }
@@ -175,27 +157,30 @@ public class MainActivityContainer extends AppCompatActivity {
         return deviceStates;
     }
 
-    public static int addDeviceToStates(SensorDevice s) {
+    public static void addDeviceToStates(SensorDevice s) {
         deviceStates.put(s.getUid(), s);
-        return deviceStates.size();
     }
 
-    public static SensorDevice getSensorById(String id) {
-        return deviceStates.get(id);
-    }
-
-    public static void setDefaultIndex(int x) {
+    public static void setDefaultIndex(int x, int id, String s) {
         DEFAULT_INDEX = x;
+        DEFAULT_PRESET_ID = id;
+        DEFAULT_PRESET_NAME = s;
     }
 
     public static int getDefaultIndex() {
         return DEFAULT_INDEX;
     }
 
+    public static int getDefaultPresetId() {
+        return DEFAULT_PRESET_ID;
+    }
+
+    public static String getDefaultPresetName() {
+        return DEFAULT_PRESET_NAME;
+    }
+
     private void insertIntoCSVDb(HapticCSV h){
-        AppExecutors.getInstance().diskIO().execute(() -> {
-            csvDb.hapticsDao().insertCSVFile(h);
-        });
+        AppExecutors.getInstance().diskIO().execute(() -> csvDb.hapticsDao().insertCSVFile(h));
     }
 }
 

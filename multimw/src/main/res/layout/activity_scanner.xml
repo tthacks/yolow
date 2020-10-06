@@ -46,7 +46,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Select MetaWear"
+        android:text="@string/select_sensor"
         android:id="@+id/ble_scan_title"
         android:layout_gravity="center_horizontal" />
 
