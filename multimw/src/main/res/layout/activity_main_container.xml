@@ -22,16 +22,16 @@
             android:layout_height="wrap_content"
             android:minHeight="?actionBarSize"
             android:padding="@dimen/appbar_padding"
-            android:text="@string/settings"
+            android:text="@string/sensor_map_header"
             android:textAppearance="@style/TextAppearance.Widget.AppCompat.Toolbar.Title" />
 
     </android.support.design.widget.AppBarLayout>
-
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/scan_devices_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/appBarLayout">
@@ -39,18 +39,19 @@
         <include
             layout="@layout/content_main"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            app:layout_constraintBottom_toTopOf="@id/scan_devices_button"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/appBarLayout" />
     </android.support.constraint.ConstraintLayout>
 
     <Button
         android:id="@+id/scan_devices_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="SCAN DEVICES"
+        android:layout_marginVertical="8dp"
+        android:text="@string/scan_devices"
         app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
@@ -60,8 +61,8 @@
         android:id="@+id/upload_csv_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="UPLOAD CSV"
+        android:layout_marginVertical="8dp"
+        android:text="@string/upload_csv"
         app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
         app:layout_constraintEnd_toStartOf="@+id/scan_devices_button"
         app:layout_constraintHorizontal_bias="0.5"
@@ -83,8 +84,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:background="@color/colorPrimary"
             android:padding="4dp"
-            android:text="View Map" />
+            android:text="@string/map" />
 
         <Button
             android:id="@+id/button_goto_settings"
@@ -92,9 +94,9 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@color/colorPrimary"
+            android:background="@color/colorAccent"
             android:padding="4dp"
-            android:text="View Settings" />
+            android:text="@string/presets" />
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>

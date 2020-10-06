@@ -1,49 +1,70 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
-import android.content.ClipData;
-import android.content.ClipDescription;
+import android.app.Activity;
+import android.bluetooth.BluetoothDevice;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.android.BtleService;
 import com.mbientlab.metawear.module.Haptic;
+import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
+import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
+import com.mbientlab.metawear.tutorial.multimw.database.Preset;
+import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class HumanFragment extends Fragment implements View.OnTouchListener, View.OnDragListener {
+public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener, View.OnLongClickListener {
 
+    private BtleService.LocalBinder binder;
     private boolean isLocked, isRecording;
-    private View currentlyDragging = null;
+    private TextView lastSelected = null;
+    private View sensorSettingsBar;
+    private EditText sensorName;
+    private Spinner presetSpinner;
+    private PresetDatabase pDatabase;
+    private CSVDatabase csvDb;
+    private List<String> presets;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Activity owner = getActivity();
+        owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        getActivity().getApplicationContext().unbindService(this);
     }
 
     @Override
@@ -56,28 +77,69 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
+        csvDb = CSVDatabase.getInstance(getActivity().getApplicationContext());
         //button controls
+        sensorSettingsBar = view.findViewById(R.id.sensor_data_layout);
+        sensorSettingsBar.setVisibility(View.INVISIBLE);
         isLocked = false;
         isRecording = false;
+        sensorName = view.findViewById(R.id.sensor_name);
+        presetSpinner = view.findViewById(R.id.sensor_preset_select);
+        retrievePresets();
 
+        presetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                if(lastSelected != null) {
+                    SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
+                    AppExecutors.getInstance().diskIO().execute(() -> {
+                        final int preset_id = pDatabase.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
+                        getActivity().runOnUiThread(() -> {
+                            s.setPreset_id(preset_id);
+                            s.setPresetName((String) adapterView.getItemAtPosition(i));
+                        });
+                    });
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {}
+        });
         Button lock_button = view.findViewById(R.id.button_lock);
         Button record_button = view.findViewById(R.id.button_record);
         lock_button.setOnClickListener(v -> {
             isLocked = !isLocked;
             if (isLocked) {
-                lock_button.setText("UNLOCK");
+                lock_button.setText(R.string.unlock);
             } else {
-                lock_button.setText("LOCK");
+                lock_button.setText(R.string.lock);
             }
         });
         record_button.setOnClickListener(v -> {
             isRecording = !isRecording;
             if (isRecording) {
-                record_button.setText("STOP RECORDING");
+                record_button.setText(R.string.stop_recording);
                 lock_button.setEnabled(false);
             } else {
-                record_button.setText("START RECORDING");
+                record_button.setText(R.string.start_recording);
                 lock_button.setEnabled(true);
+            }
+        });
+
+        sensorName.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                if(lastSelected != null) {
+                    lastSelected.setText(editable.toString());
+                    SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
+                    s.setFriendlyName(editable.toString());
+                }
             }
         });
 
@@ -86,38 +148,86 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
     @Override
     public void onResume() {
         super.onResume();
+        retrievePresets();
         retrieveSensors();
+    }
+
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        binder= (BtleService.LocalBinder) service;
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {}
+
+    public void addNewDevice(BluetoothDevice btDevice) {
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName());
+        newDeviceState.setPresetName(MainActivityContainer.getDefaultPresetName());
+        newDeviceState.setPreset_id(MainActivityContainer.getDefaultPresetId());
+        final MetaWearBoard newBoard = binder.getMetaWearBoard(btDevice);
+
+         MainActivityContainer.addDeviceToStates(newDeviceState);
+        MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
+
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid())));
+        newBoard.connectAsync().onSuccessTask(task -> {
+            getActivity().runOnUiThread(() -> {
+                newDeviceState.setConnecting(false);
+                retrieveSensors();
+            });
+            return null;
+        });
+    }
+
+    private void addSensorBox(SensorDevice s, int idx) {
+        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
+        TextView newSensor = new TextView(getActivity().getApplicationContext());
+        newSensor.setText(s.getFriendlyName());
+        newSensor.setTag(s.getUid());
+        if(s.getX_loc() == 0) {
+            newSensor.setX(0);
+            newSensor.setY(idx * 100);
+        }
+        else {
+            newSensor.setX(s.getX_loc());
+            newSensor.setY(s.getY_loc());
+        }
+        if(s.isConnecting()) {
+            newSensor.setBackgroundResource(R.color.colorAccentShy);
+        }
+        else {
+            newSensor.setBackgroundResource(R.color.sensorboxDefault);
+        }
+        newSensor.setPadding(24, 16, 24, 16);
+        newSensor.setTextSize(24);
+        newSensor.setOnLongClickListener(this);
+        newSensor.setOnDragListener(this);
+        newSensor.setOnTouchListener(this);
+        newSensor.setLayoutParams(new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT ));
+        constraintLayout.addView(newSensor);
     }
 
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
+        SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            if (!isLocked) {
-                ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
-                String[] mimeTypes = {ClipDescription.MIMETYPE_TEXT_PLAIN};
-                ClipData data = new ClipData(v.getTag().toString(), mimeTypes, item);
-                View.DragShadowBuilder dragshadow = new View.DragShadowBuilder(v);
-                v.startDrag(data, dragshadow, null, 0);
-                currentlyDragging = v;
-                return true;
-            } else {
+            if(isLocked) {
                 //send haptic
-                SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
-                MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.uid);
+                MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.getUid());
                 if(board != null) {
-                    if(s.usingCSV) {
-                            sendHapticFromCSV(s.csvFile, board);
-                        }
-                        else {
-                            for (int i = 0; i < s.totalCycles; i++) {
-                                board.getModule(Haptic.class).startMotor((short) (s.onDuration * 1000));
-                                try {
-                                    Thread.sleep((long) (s.onDuration * 1000) + (long) (s.offDuration * 1000));
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
+                    sendHapticFromPreset(s, board);
+                }
+            }
+            else {
+                lastSelected = (TextView) v;
+                sensorSettingsBar.setVisibility(View.VISIBLE);
+                sensorName.setText(s.getFriendlyName());
+                if(presets.indexOf(s.getPresetName()) > -1) { //preset selected
+                    presetSpinner.setSelection(presets.indexOf(s.getPresetName()));
+                }
+                else{
+                    presetSpinner.setSelection(presets.indexOf(MainActivityContainer.getDefaultPresetName()));
                 }
             }
             return true;
@@ -125,82 +235,137 @@ public class HumanFragment extends Fragment implements View.OnTouchListener, Vie
         return false;
     }
 
-    private void sendHapticFromCSV(String filename, MetaWearBoard board) {
-        HapticCSV file = MainActivityContainer.csvFiles.get(filename);
-        if(file != null) {
-            System.out.println("on: " + file.getOnTime());
-            System.out.println("off" + file.getOffTime());
-            String[] onTime = file.getOnTime().split(",");
-            String[] offTime = file.getOffTime().split(",");
-            for (int i = 0; i < onTime.length; i++) {
-                try {
-                    float on = Float.parseFloat(onTime[i]) * 1000;
-                    float off = Float.parseFloat(offTime[i]) * 1000;
-                    board.getModule(Haptic.class).startMotor((short) on);
-                    try {
-                        Thread.sleep((long) (on + off));
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                } catch (NumberFormatException e) {
-                    e.printStackTrace();
-                    Toast.makeText(getActivity().getApplicationContext(), "There was something wrong with the file.", Toast.LENGTH_SHORT).show();
-                    break;
-                }
-            }
-        }
-    }
-
     public boolean onDrag(View v, DragEvent event) {
         if (!isLocked) {
-            int action = event.getAction();
-            switch (action) {
-                case DragEvent.ACTION_DRAG_ENDED:
-                    if (currentlyDragging != null) {
-                        currentlyDragging.setX(event.getX());
-                        currentlyDragging.setY(event.getY());
-                        SensorDevice s = MainActivityContainer.getSensorById(currentlyDragging.getTag().toString());
-                        if(s != null) {
-                            s.x_loc = event.getX();
-                            s.y_loc = event.getY();
-                        }
-                        currentlyDragging = null;
-                    }
-                    return true;
-                case DragEvent.ACTION_DRAG_STARTED:
-                    return true;
-            }
-            return false;
+//            System.out.println("draggin");
+//            int action = event.getAction();
+//            switch (action) {
+//                case DragEvent.ACTION_DRAG_STARTED:
+//                    System.out.println("started");
+//                    if(event.getClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
+//                        v.setBackgroundColor(Color.BLUE);
+//                        v.invalidate();
+//                        return true;
+//                    }
+//                    return false;
+//                case DragEvent.ACTION_DRAG_ENTERED:
+//                     System.out.println("entered");
+//                     return true;
+//                 case DragEvent.ACTION_DRAG_LOCATION:
+//                     return true;
+//                case DragEvent.ACTION_DRAG_ENDED:
+//                    System.out.println("ended");
+//                    if(event.getResult()) {
+//                        System.out.println("the drop was handled");
+//                    }
+//                    else {
+//                        System.out.println("The drop didn't work.");
+//                    }
+//                    return true;
+//                case DragEvent.ACTION_DRAG_EXITED:
+//                     System.out.println("exited");
+//                     return true;
+//                case DragEvent.ACTION_DROP:
+//                     System.out.println("dropped");
+//                     v.setBackgroundColor(Color.RED);
+//                default:
+//                    return false;
+//            }
         }
+        System.out.println("Drag and drop not yet implemented.");
         return false;
+    }
+
+    private void sendHapticFromCSV(int fileId, MetaWearBoard board) {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            final HapticCSV file = csvDb.hapticsDao().loadCSVFileById(fileId);
+            getActivity().runOnUiThread(() -> {
+                if(file != null) {
+                    String[] onTime = file.getOnTime().split(",");
+                    String[] offTime = file.getOffTime().split(",");
+                    for (int i = 0; i < onTime.length; i++) {
+                        try {
+                            float on = Float.parseFloat(onTime[i]) * 1000;
+                            float off = Float.parseFloat(offTime[i]) * 1000;
+                            board.getModule(Haptic.class).startMotor((short) on);
+                            try {
+                                Thread.sleep((long) (on + off));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        } catch (NumberFormatException e) {
+                            e.printStackTrace();
+                            Toast.makeText(Objects.requireNonNull(getActivity()).getApplicationContext(), "The file could not be parsed.", Toast.LENGTH_SHORT).show();
+                            break;
+                        }
+                    }
+                }
+                else {
+                    System.out.println("The file could not be found.");
+                }
+            });
+        });
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private void retrieveSensors() {
         List<SensorDevice> sensors = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
-        ConstraintLayout constraintLayout = Objects.requireNonNull(getView()).findViewById(R.id.sensorbox_area);
         for (int i = 0; i < sensors.size(); i++) {
-            SensorDevice s = sensors.get(i);
-            TextView sensorbox = new TextView(Objects.requireNonNull(getActivity()).getApplicationContext());
-            sensorbox.setText(s.friendlyName);
-            System.out.println("UID: " + s.uid);
-            sensorbox.setTag(s.uid);
-            sensorbox.setBackgroundResource(R.color.sensorboxDefault);
-            if(s.x_loc == 0) {
-                sensorbox.setX(i * 300);
-            }
-            else {
-                sensorbox.setX(s.x_loc);
-                sensorbox.setY(s.y_loc);
-            }
-            sensorbox.setTextSize(24);
-            sensorbox.setPadding(16, 16, 16, 16);
-            ConstraintLayout.LayoutParams clpSensorbox = new ConstraintLayout.LayoutParams(
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT);
-            sensorbox.setLayoutParams(clpSensorbox);
-            constraintLayout.addView(sensorbox);
-            sensorbox.setOnTouchListener(this);
-            sensorbox.setOnDragListener(this);
+            addSensorBox(sensors.get(i), i);
         }
+    }
+
+    private void retrievePresets() {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+                final List<String> p_list = pDatabase.pDao().loadAllPresetNames();
+                getActivity().runOnUiThread(() -> {
+                    presets = p_list;
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(), android.R.layout.simple_spinner_item, presets);
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    presetSpinner.setAdapter(adapter);
+                });
+        });
+    }
+
+    private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board) {
+        int id = s.getPreset_id();
+        if(id > -1) {
+            AppExecutors.getInstance().diskIO().execute(() -> {
+                Preset p = pDatabase.pDao().loadPresetFromId(id);
+                if (p != null) {
+                    System.out.println("Playing preset " + p.getName());
+                    if(p.isFromCSV()) {
+                        sendHapticFromCSV(p.getCsvFile(), board);
+                    }
+                    else {
+                        for (int i = 0; i < p.getNumCycles(); i++) {
+                            board.getModule(Haptic.class).startMotor((short) (p.getOn_time() * 1000));
+                            try {
+                                Thread.sleep((long) (p.getOn_time() * 1000) + (long) (p.getOff_time() * 1000));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        } //end for
+                    }
+                }
+                else {
+                    System.out.println("No preset found. Id: " + id);
+                 }
+        }); //end async
+        }//end if
+        else { //no sensor detected
+            Toast.makeText(getActivity().getApplicationContext(), "No preset assigned to this sensor.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public boolean onLongClick(View v) {
+        if(!isLocked) {
+//            ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
+//            ClipData data = new ClipData(v.getTag().toString(), new String[] {ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
+//            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
+//            v.startDrag(data, shadow, null, 0);
+        }
+        return false;
     }
 }

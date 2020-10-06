@@ -3,22 +3,71 @@
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/human_constraint_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_alignParentLeft="true"
+    android:layout_alignParentStart="true"
     android:layout_alignParentEnd="false"
     android:layout_alignParentBottom="false">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/sensorbox_area"
+    <LinearLayout
+        android:id="@+id/sensor_data_layout"
         android:layout_width="match_parent"
-        android:layout_height="882dp"
-        android:layout_marginBottom="90dp"
-        android:background="@drawable/human_outline"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="0dp"
+        android:background="@color/colorPrimary"
+        android:orientation="horizontal"
+        android:padding="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/sensor_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:background="@color/colorAccentShy"
+            android:ems="10"
+            android:inputType="textPersonName"
+            android:padding="8dp"
+            android:hint="@string/name"
+            android:importantForAutofill="no" />
+
+        <Spinner
+            android:id="@+id/sensor_preset_select"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:minHeight="24dp"
+            android:padding="8dp" />
+    </LinearLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/sensor_area"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#E91E63"
+        app:layout_constraintBottom_toTopOf="@id/lock_record_bar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/sensor_data_layout">
+
+        <ImageView
+            android:id="@+id/human_outline"
+            android:layout_width="0dp"
+            android:layout_height="850dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/human_outline"
+            tools:ignore="ContentDescription" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
         android:id="@+id/lock_record_bar"
@@ -28,8 +77,7 @@
         android:padding="@dimen/appbar_padding"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/sensorbox_area">
+        app:layout_constraintStart_toStartOf="parent">
 
         <Button
             android:id="@+id/button_lock"
@@ -41,7 +89,7 @@
             android:layout_weight="1"
             android:background="@color/colorPrimaryDark"
             android:padding="4dp"
-            android:text="LOCK" />
+            android:text="@string/lock" />
 
         <Button
             android:id="@+id/button_record"
@@ -53,8 +101,7 @@
             android:layout_weight="1"
             android:background="@color/colorAccent2"
             android:padding="4dp"
-            android:text="START RECORDING" />
+            android:text="@string/start_recording" />
     </LinearLayout>
-
 
 </android.support.constraint.ConstraintLayout>

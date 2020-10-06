@@ -1,47 +1,26 @@
-<!--
-  ~ Copyright 2015 MbientLab Inc. All rights reserved.
-  ~
-  ~ IMPORTANT: Your use of this Software is limited to those specific rights
-  ~ granted under the terms of a software license agreement between the user who
-  ~ downloaded the software, his/her employer (which must be your employer) and
-  ~ MbientLab Inc, (the "License").  You may not use this Software unless you
-  ~ agree to abide by the terms of the License which can be found at
-  ~ www.mbientlab.com/terms . The License limits your use, and you acknowledge,
-  ~ that the  Software may not be modified, copied or distributed and can be used
-  ~ solely and exclusively in conjunction with a MbientLab Inc, product.  Other
-  ~ than for the foregoing purpose, you may not use, reproduce, copy, prepare
-  ~ derivative works of, modify, distribute, perform, display or sell this
-  ~ Software and/or its documentation for any purpose.
-  ~
-  ~ YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
-  ~ PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-  ~ INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
-  ~ NON-INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
-  ~ MBIENTLAB OR ITS LICENSORS BE LIABLE OR OBLIGATED UNDER CONTRACT, NEGLIGENCE,
-  ~ STRICT LIABILITY, CONTRIBUTION, BREACH OF WARRANTY, OR OTHER LEGAL EQUITABLE
-  ~ THEORY ANY DIRECT OR INDIRECT DAMAGES OR EXPENSES INCLUDING BUT NOT LIMITED
-  ~ TO ANY INCIDENTAL, SPECIAL, INDIRECT, PUNITIVE OR CONSEQUENTIAL DAMAGES, LOST
-  ~ PROFITS OR LOST DATA, COST OF PROCUREMENT OF SUBSTITUTE GOODS, TECHNOLOGY,
-  ~ SERVICES, OR ANY CLAIMS BY THIRD PARTIES (INCLUDING BUT NOT LIMITED TO ANY
-  ~ DEFENSE THEREOF), OR OTHER SIMILAR COSTS.
-  ~
-  ~ Should you have any questions regarding your right to use this Software,
-  ~ contact MbientLab Inc, at www.mbientlab.com.
-  -->
-
 <resources>
     <string name="app_name">Yolow</string>
-    <string name="action_settings">Settings</string>
-    <string name="text_released">Released</string>
-    <string name="text_pressed">Pressed</string>
-    <string name="text_orientation">Orientation</string>
-    <string name="text_connecting">Connecting...</string>
-    <string name="human">Human</string>
-    <string name="settings">Settings</string>
-    <string name="title_activity_human">HumanActivity</string>
-    <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
+    <string name="sensor_map_header">Sensor Map</string>
+    <string name="name">Name</string>
+    <string name="lock">LOCK</string>
+    <string name="unlock">UNLOCK</string>
+    <string name="start_recording">START RECORDING</string>
+    <string name="stop_recording">STOP RECORDING</string>
+    <string name="scan_devices">SCAN DEVICES</string>
+    <string name="upload_csv">UPLOAD CSV</string>
+    <string name="presets_header">Presets</string>
+    <string name="custom">Custom</string>
+    <string name="num_cycles"># Cycles</string>
+    <string name="duration_on">Duration ON (s)</string>
+    <string name="duration_off">Duration OFF (s)</string>
+    <string name="from_csv">From CSV</string>
+    <string name="no_current_file">No current file</string>
+    <string name="set_default">Set as Default</string>
+    <string name="accel_sample">Accel sample rate (Hz)</string>
+    <string name="gyro_sample">Gyro sample rate (Hz)</string>
+    <string name="new_preset">NEW PRESET</string>
+    <string name="map">MAP</string>
+    <string name="presets">PRESETS</string>
+    <string name="select_sensor">Select Sensor</string>
+    <string name="delete_x">X</string>
 </resources>

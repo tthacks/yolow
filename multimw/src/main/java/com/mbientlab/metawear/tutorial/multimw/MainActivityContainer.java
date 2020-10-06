@@ -9,13 +9,14 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
+import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 
 import java.io.BufferedReader;
@@ -28,16 +29,18 @@ import java.util.Objects;
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     public static final int PICKFILE_REQUEST_CODE = 2;
+    private static int DEFAULT_INDEX = 0;
+    private static String DEFAULT_PRESET_NAME = "";
+    private static int DEFAULT_PRESET_ID = -1;
+    private CSVDatabase csvDb;
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
-    public static HashMap<String, HapticCSV> csvFiles;
-    private boolean viewingSettings = true;
+    private boolean viewingHuman = true;
     private FragmentManager fm;
 
     public MainActivityContainer() {
         stateToBoards = new HashMap<>();
         deviceStates = new HashMap<>();
-        csvFiles = new HashMap<>();
     }
 
     @Override
@@ -45,11 +48,14 @@ public class MainActivityContainer extends AppCompatActivity {
         //set view
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_container);
+        csvDb = CSVDatabase.getInstance(this);
         //init button listeners
+        TextView title = findViewById(R.id.title);
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
         Button upload_csv_button = findViewById(R.id.upload_csv_button);
+        upload_csv_button.setVisibility(View.GONE);
         scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivityContainer.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
         upload_csv_button.setOnClickListener(view -> {
             Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
@@ -61,31 +67,33 @@ public class MainActivityContainer extends AppCompatActivity {
 
         fm = getSupportFragmentManager();
         goto_human_button.setOnClickListener(view -> {
-            if(viewingSettings) {
-                viewingSettings = false;
-                View initSettings = findViewById(R.id.main_activity_content);
-                initSettings.setVisibility(View.GONE);
+            if(!viewingHuman) {
+                viewingHuman = true;
+                title.setText(R.string.sensor_map_header);
                 goto_human_button.setBackgroundResource(R.color.colorPrimary);
                 goto_settings_button.setBackgroundResource(R.color.colorAccent);
-                scan_devices_button.setVisibility(View.GONE);
+                scan_devices_button.setVisibility(View.VISIBLE);
                 upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new HumanFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
-                transaction.replace(R.id.fragment_container, fragment, "human_fragment");
+                transaction.replace(R.id.fragment_container, fragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
             }
         });
         goto_settings_button.setOnClickListener(view -> {
-            if(!viewingSettings) {
-                viewingSettings = true;
+            if(viewingHuman) {
+                viewingHuman = false;
+                title.setText(R.string.presets_header);
+                View initView = findViewById(R.id.main_activity_content);
+                initView.setVisibility(View.GONE);
                 goto_human_button.setBackgroundResource(R.color.colorAccent);
                 goto_settings_button.setBackgroundResource(R.color.colorPrimary);
-                scan_devices_button.setVisibility(View.VISIBLE);
+                scan_devices_button.setVisibility(View.GONE);
                 upload_csv_button.setVisibility(View.VISIBLE);
-                Fragment fragment = new SettingsFragment();
+                Fragment fragment = new PresetFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
-                transaction.replace(R.id.fragment_container, fragment, "settings_fragment");
+                transaction.replace(R.id.fragment_container, fragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
             }
@@ -99,7 +107,7 @@ public class MainActivityContainer extends AppCompatActivity {
             if(data != null) {
                 BluetoothDevice selectedDevice = data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
                 if (selectedDevice != null) {
-                    ((SettingsFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
+                    ((HumanFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
                 }
             }
         }
@@ -109,7 +117,7 @@ public class MainActivityContainer extends AppCompatActivity {
                 uri = data.getData();
                 try {
                     HapticCSV newFile = readTextFromUri(uri);
-                    csvFiles.put(newFile.getFilename(), newFile);
+                    insertIntoCSVDb(newFile);
                     Toast.makeText(getApplicationContext(), "File " + newFile.getFilename() +  " successfully uploaded", Toast.LENGTH_SHORT).show();
                 }
                 catch(IOException e) {
@@ -122,7 +130,8 @@ public class MainActivityContainer extends AppCompatActivity {
     private HapticCSV readTextFromUri(Uri uri) throws IOException {
         StringBuilder onTime = new StringBuilder();
         StringBuilder offTime = new StringBuilder();
-        try (InputStream inputStream =
+        try (
+                InputStream inputStream =
                      getContentResolver().openInputStream(uri);
              BufferedReader reader = new BufferedReader(
                      new InputStreamReader(Objects.requireNonNull(inputStream)))) {
@@ -133,30 +142,7 @@ public class MainActivityContainer extends AppCompatActivity {
                 offTime.append(tokens[1]).append(",");
             }
         }
-        System.out.println("On Time:" + onTime.toString());
         return new HapticCSV(uri.getLastPathSegment(), onTime.toString(), offTime.toString());
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     public static HashMap<String, MetaWearBoard> getStateToBoards() {
@@ -171,8 +157,30 @@ public class MainActivityContainer extends AppCompatActivity {
         return deviceStates;
     }
 
-    public static SensorDevice getSensorById(String id) {
-        return deviceStates.get(id);
+    public static void addDeviceToStates(SensorDevice s) {
+        deviceStates.put(s.getUid(), s);
+    }
+
+    public static void setDefaultIndex(int x, int id, String s) {
+        DEFAULT_INDEX = x;
+        DEFAULT_PRESET_ID = id;
+        DEFAULT_PRESET_NAME = s;
+    }
+
+    public static int getDefaultIndex() {
+        return DEFAULT_INDEX;
+    }
+
+    public static int getDefaultPresetId() {
+        return DEFAULT_PRESET_ID;
+    }
+
+    public static String getDefaultPresetName() {
+        return DEFAULT_PRESET_NAME;
+    }
+
+    private void insertIntoCSVDb(HapticCSV h){
+        AppExecutors.getInstance().diskIO().execute(() -> csvDb.hapticsDao().insertCSVFile(h));
     }
 }
 

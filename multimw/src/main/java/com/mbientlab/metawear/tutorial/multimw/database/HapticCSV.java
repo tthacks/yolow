@@ -6,7 +6,8 @@ import androidx.room.PrimaryKey;
 
 @Entity(tableName = "csv")
 public class HapticCSV {
-    @PrimaryKey @NonNull
+    @PrimaryKey (autoGenerate = true)
+    int _id;
     String filename;
     String onTime;
     String offTime;
@@ -17,28 +18,18 @@ public class HapticCSV {
         this.offTime = offTime;
     }
 
+    public int getId() { return _id; }
+
     public String getFilename() {
         return filename;
-    }
-
-    public void setFilename(String filename) {
-        this.filename = filename;
     }
 
     public String getOnTime() {
         return onTime;
     }
 
-    public void setOnTime(String onTime) {
-        this.onTime = onTime;
-    }
-
     public String getOffTime() {
         return offTime;
-    }
-
-    public void setOffTime(String offTime) {
-        this.offTime = offTime;
     }
 
 }
