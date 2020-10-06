@@ -112,7 +112,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 if(lastSelected != null) {
                     SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
-                    //TODO: where you left off
                     AppExecutors.getInstance().diskIO().execute(() -> {
                         final int preset_id = pDatabase.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
                         getActivity().runOnUiThread(() -> {s.setPreset_id(preset_id);});
@@ -195,7 +194,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     }
 
     private void addSensorBox(SensorDevice s, int idx) {
-        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensorbox_area);
+        ConstraintLayout constraintLayout = getView().findViewById(R.id.human_constraint_layout);
         TextView newSensor = new TextView(getActivity().getApplicationContext());
         System.out.println("making sensor " + s.getFriendlyName());
         newSensor.setText(s.getFriendlyName());

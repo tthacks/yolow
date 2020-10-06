@@ -190,7 +190,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             });
 
             delete_button.setOnClickListener(view -> {
-                Preset p = pList.get(getAdapterPosition());
+                deletePreset(pList.get(getAdapterPosition()));
                 pList.remove(getAdapterPosition());
                 if(MainActivityContainer.getDefaultIndex() == getAdapterPosition()) { //is the default
                     MainActivityContainer.setDefaultIndex(0);
@@ -198,17 +198,16 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 else if(getAdapterPosition() < MainActivityContainer.getDefaultIndex()) {
                     MainActivityContainer.setDefaultIndex(MainActivityContainer.getDefaultIndex() - 1);
                 }
-                deletePreset(pList.get(getAdapterPosition()));
                 notifyDataSetChanged();
             });
 
             spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int selected, long l) {
-//                    pList.get(getAdapterPosition()).setCsvFile((String)adapterView.getItemAtPosition(selected));
                     //TODO: fix csv picker
+//                    pList.get(getAdapterPosition()).setCsvFile((String)adapterView.getItemAtPosition(selected));
 //                    updatePreset(pList.get(getAdapterPosition()));
-    //                notifyDataSetChanged();
+//                    notifyDataSetChanged();
                 }
                 @Override
                 public void onNothingSelected(AdapterView<?> adapterView) {}

@@ -45,17 +45,25 @@
     </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/sensorbox_area"
-        android:layout_width="match_parent"
-        android:layout_height="650dp"
-        android:layout_marginTop="64dp"
-        android:layout_marginBottom="64dp"
-        android:background="@drawable/human_outline"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#E91E63"
+        app:layout_constraintBottom_toTopOf="@id/lock_record_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/sensor_data_layout">
 
+        <ImageView
+            android:id="@+id/human_outline"
+            android:layout_width="0dp"
+            android:layout_height="850dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/human_outline" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout

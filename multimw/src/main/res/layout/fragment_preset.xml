@@ -9,9 +9,10 @@
     <android.support.v7.widget.RecyclerView
         android:id="@+id/presets"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
+        android:layout_marginBottom="64dp"
         android:background="@color/white"
         android:scrollbars="vertical"
         app:layout_constraintBottom_toTopOf="@+id/new_preset_button"
