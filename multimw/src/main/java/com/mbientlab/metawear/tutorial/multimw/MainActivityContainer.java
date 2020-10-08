@@ -35,7 +35,6 @@ public class MainActivityContainer extends AppCompatActivity {
     private CSVDatabase csvDb;
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
-    private boolean viewingHuman = true;
     private FragmentManager fm;
 
     public MainActivityContainer() {
@@ -53,6 +52,7 @@ public class MainActivityContainer extends AppCompatActivity {
         TextView title = findViewById(R.id.title);
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
+        Button goto_exports_button = findViewById(R.id.button_goto_exports);
         Button scan_devices_button = findViewById(R.id.scan_devices_button);
         Button upload_csv_button = findViewById(R.id.upload_csv_button);
         upload_csv_button.setVisibility(View.GONE);
@@ -67,11 +67,10 @@ public class MainActivityContainer extends AppCompatActivity {
 
         fm = getSupportFragmentManager();
         goto_human_button.setOnClickListener(view -> {
-            if(!viewingHuman) {
-                viewingHuman = true;
                 title.setText(R.string.sensor_map_header);
-                goto_human_button.setBackgroundResource(R.color.colorPrimary);
-                goto_settings_button.setBackgroundResource(R.color.colorAccent);
+                goto_human_button.setBackgroundResource(R.color.colorAccent);
+                goto_settings_button.setBackgroundResource(R.color.colorPrimary);
+                goto_exports_button.setBackgroundResource(R.color.colorPrimary);
                 scan_devices_button.setVisibility(View.VISIBLE);
                 upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new HumanFragment();
@@ -79,16 +78,14 @@ public class MainActivityContainer extends AppCompatActivity {
                 transaction.replace(R.id.fragment_container, fragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
-            }
         });
         goto_settings_button.setOnClickListener(view -> {
-            if(viewingHuman) {
-                viewingHuman = false;
                 title.setText(R.string.presets_header);
                 View initView = findViewById(R.id.main_activity_content);
                 initView.setVisibility(View.GONE);
-                goto_human_button.setBackgroundResource(R.color.colorAccent);
-                goto_settings_button.setBackgroundResource(R.color.colorPrimary);
+                goto_human_button.setBackgroundResource(R.color.colorPrimary);
+                goto_settings_button.setBackgroundResource(R.color.colorAccent);
+                goto_exports_button.setBackgroundResource(R.color.colorPrimary);
                 scan_devices_button.setVisibility(View.GONE);
                 upload_csv_button.setVisibility(View.VISIBLE);
                 Fragment fragment = new PresetFragment();
@@ -96,7 +93,22 @@ public class MainActivityContainer extends AppCompatActivity {
                 transaction.replace(R.id.fragment_container, fragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
-            }
+        });
+
+        goto_exports_button.setOnClickListener(view -> {
+                title.setText(R.string.exports_header);
+                View initView = findViewById(R.id.main_activity_content);
+                initView.setVisibility(View.GONE);
+                goto_human_button.setBackgroundResource(R.color.colorPrimary);
+                goto_settings_button.setBackgroundResource(R.color.colorPrimary);
+                goto_exports_button.setBackgroundResource(R.color.colorAccent);
+                scan_devices_button.setVisibility(View.GONE);
+                upload_csv_button.setVisibility(View.GONE);
+                Fragment fragment = new ExportFragment();
+                FragmentTransaction transaction = fm.beginTransaction();
+                transaction.replace(R.id.fragment_container, fragment);
+                transaction.addToBackStack(null);
+                transaction.commit();
         });
 
     }

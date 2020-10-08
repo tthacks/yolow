@@ -35,7 +35,7 @@ public class PresetFragment extends Fragment {
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         //TODO: Known bug: recycler does not scroll when >4 items are in it
-        RecyclerView recyclerView = view.findViewById(R.id.presets);
+        RecyclerView recyclerView = view.findViewById(R.id.sessions);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);
         pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());

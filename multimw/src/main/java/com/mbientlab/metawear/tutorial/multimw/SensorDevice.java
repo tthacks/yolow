@@ -1,5 +1,8 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
+import android.content.Context;
+import android.widget.TextView;
+
 public class SensorDevice {
     private String uid;
     private String friendlyName;
@@ -8,8 +11,9 @@ public class SensorDevice {
     private int preset_id;
     private float x_loc;
     private float y_loc;
+    private TextView view;
 
-    public SensorDevice(String uid, String friendlyName) {
+    public SensorDevice(String uid, String friendlyName, Context context) {
 
         this.uid = uid;
         this.friendlyName = friendlyName;
@@ -18,6 +22,12 @@ public class SensorDevice {
         this.presetName = "";
         this.x_loc = 0;
         this.y_loc = 0;
+        this.view = new TextView(context);
+        this.view.setTag(uid);
+        this.view.setX(this.x_loc);
+        this.view.setY(this.y_loc);
+        this.view.setPadding(24, 16, 24, 16);
+        this.view.setTextSize(24);
     }
 
     public int getPreset_id() {
@@ -70,6 +80,14 @@ public class SensorDevice {
 
     public void setY_loc(float y_loc) {
         this.y_loc = y_loc;
+    }
+
+    public TextView getView() {
+        return view;
+    }
+
+    public void setView(TextView view) {
+        this.view = view;
     }
 
 }

@@ -23,4 +23,5 @@
     <string name="presets">PRESETS</string>
     <string name="select_sensor">Select Sensor</string>
     <string name="delete_x">X</string>
+    <string name="exports_header">Recorded Sessions</string>
 </resources>

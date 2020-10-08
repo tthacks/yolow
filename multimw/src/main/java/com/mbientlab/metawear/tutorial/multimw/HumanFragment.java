@@ -7,12 +7,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -22,16 +25,27 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.Route;
+import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.RouteBuilder;
+import com.mbientlab.metawear.builder.RouteComponent;
+import com.mbientlab.metawear.data.Acceleration;
+import com.mbientlab.metawear.data.AngularVelocity;
+import com.mbientlab.metawear.data.Quaternion;
+import com.mbientlab.metawear.module.Accelerometer;
+import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
+import com.mbientlab.metawear.module.SensorFusionBosch;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
@@ -42,17 +56,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import bolts.Continuation;
+import bolts.Task;
+
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener, View.OnLongClickListener {
 
     private BtleService.LocalBinder binder;
+    private PresetDatabase pDatabase;
+    private CSVDatabase csvDb;
     private boolean isLocked, isRecording;
+    private List<String> presets;
     private TextView lastSelected = null;
     private View sensorSettingsBar;
     private EditText sensorName;
     private Spinner presetSpinner;
-    private PresetDatabase pDatabase;
-    private CSVDatabase csvDb;
-    private List<String> presets;
+    List<SensorFusionBosch> fusionModules = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -73,6 +91,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return inflater.inflate(R.layout.fragment_human, container, false);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("SetTextI18n")
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
@@ -120,9 +139,18 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             if (isRecording) {
                 record_button.setText(R.string.stop_recording);
                 lock_button.setEnabled(false);
+                //RECORDING CODE
+//                final String filename = "Yolow"+ LocalDateTime.now() + ".csv";
+//                final File path = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
+               startRecordingData();
             } else {
                 record_button.setText(R.string.start_recording);
                 lock_button.setEnabled(true);
+                for(int x = 0; x < fusionModules.size(); x++) {
+                    fusionModules.get(x).stop();
+                    fusionModules.get(x).quaternion().stop();
+                }
+               fusionModules.clear();
             }
         });
 
@@ -136,7 +164,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             @Override
             public void afterTextChanged(Editable editable) {
                 if(lastSelected != null) {
-                    lastSelected.setText(editable.toString());
+                    lastSelected.setText(truncate(editable.toString()));
                     SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
                     s.setFriendlyName(editable.toString());
                 }
@@ -149,7 +177,10 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     public void onResume() {
         super.onResume();
         retrievePresets();
-        retrieveSensors();
+        List<SensorDevice> sensors = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
+        for (int i = 0; i < sensors.size(); i++) {
+            addSensorBox(sensors.get(i));
+        }
     }
 
 
@@ -162,7 +193,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     public void onServiceDisconnected(ComponentName name) {}
 
     public void addNewDevice(BluetoothDevice btDevice) {
-        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName());
+        final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), getActivity().getApplicationContext());
         newDeviceState.setPresetName(MainActivityContainer.getDefaultPresetName());
         newDeviceState.setPreset_id(MainActivityContainer.getDefaultPresetId());
         final MetaWearBoard newBoard = binder.getMetaWearBoard(btDevice);
@@ -170,42 +201,31 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
          MainActivityContainer.addDeviceToStates(newDeviceState);
         MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
 
-        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid())));
+        newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
+            MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid());
+            System.out.println("Lost connection with sensor " + newDeviceState.getFriendlyName() + " (Id: " + newDeviceState.getUid() + ")");
+            newDeviceState.getView().setBackgroundResource(R.color.sensorBoxDisconnected);
+        })
+        );
         newBoard.connectAsync().onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.setConnecting(false);
-                retrieveSensors();
+                newDeviceState.getView().setBackgroundResource(R.color.sensorBoxConnected);
+                addSensorBox(newDeviceState);
             });
             return null;
         });
     }
 
-    private void addSensorBox(SensorDevice s, int idx) {
-        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
-        TextView newSensor = new TextView(getActivity().getApplicationContext());
-        newSensor.setText(s.getFriendlyName());
-        newSensor.setTag(s.getUid());
-        if(s.getX_loc() == 0) {
-            newSensor.setX(0);
-            newSensor.setY(idx * 100);
+    @Override
+    public boolean onLongClick(View v) {
+        if(!isLocked) {
+//            ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
+//            ClipData data = new ClipData(v.getTag().toString(), new String[] {ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
+//            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
+//            v.startDrag(data, shadow, null, 0);
         }
-        else {
-            newSensor.setX(s.getX_loc());
-            newSensor.setY(s.getY_loc());
-        }
-        if(s.isConnecting()) {
-            newSensor.setBackgroundResource(R.color.colorAccentShy);
-        }
-        else {
-            newSensor.setBackgroundResource(R.color.sensorboxDefault);
-        }
-        newSensor.setPadding(24, 16, 24, 16);
-        newSensor.setTextSize(24);
-        newSensor.setOnLongClickListener(this);
-        newSensor.setOnDragListener(this);
-        newSensor.setOnTouchListener(this);
-        newSensor.setLayoutParams(new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT ));
-        constraintLayout.addView(newSensor);
+        return false;
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -216,13 +236,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 //send haptic
                 MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.getUid());
                 if(board != null) {
-                    sendHapticFromPreset(s, board);
+                    sendHapticFromPreset(s, board, (TextView) v);
                 }
             }
             else {
                 lastSelected = (TextView) v;
                 sensorSettingsBar.setVisibility(View.VISIBLE);
-                sensorName.setText(s.getFriendlyName());
+                sensorName.setText(truncate(s.getFriendlyName()));
                 if(presets.indexOf(s.getPresetName()) > -1) { //preset selected
                     presetSpinner.setSelection(presets.indexOf(s.getPresetName()));
                 }
@@ -276,6 +296,144 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return false;
     }
 
+    private String truncate(String s) {
+        int MAX_LABEL_LENGTH = 10;
+        if(s.length() > MAX_LABEL_LENGTH) {
+            return s.substring(0, MAX_LABEL_LENGTH);
+        }
+        else {
+            return s;
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void addSensorBox(SensorDevice s) {
+        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
+        TextView t = s.getView();
+        if(t.getParent() != null) {
+            ((ConstraintLayout) t.getParent()).removeView(t);
+        }
+        t.setText(truncate(s.getFriendlyName()));
+        if(s.isConnecting()) {
+            t.setBackgroundResource(R.color.sensorBoxConnecting);
+        }
+        else {
+            t.setBackgroundResource(R.color.sensorBoxConnected);
+        }
+        t.setOnTouchListener(this);
+        t.setOnLongClickListener(this);
+        t.setOnDragListener(this);
+        t.setLayoutParams(new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT ));
+        constraintLayout.addView(t);
+    }
+
+    private void retrievePresets() {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+                final List<String> p_list = pDatabase.pDao().loadAllPresetNames();
+                getActivity().runOnUiThread(() -> {
+                    presets = p_list;
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(), android.R.layout.simple_spinner_item, presets);
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    presetSpinner.setAdapter(adapter);
+                });
+        });
+    }
+
+    private void startRecordingData() {
+        List<MetaWearBoard> boards = new ArrayList<>(MainActivityContainer.getStateToBoards().values());
+        for (int x = 0; x < boards.size(); x++) {
+            SensorFusionBosch fusion = boards.get(x).getModule(SensorFusionBosch.class);
+            fusion.configure()
+                    .mode(SensorFusionBosch.Mode.NDOF)
+                    .accRange(SensorFusionBosch.AccRange.AR_16G)
+                    .gyroRange(SensorFusionBosch.GyroRange.GR_2000DPS)
+                    .commit();
+            fusionModules.add(fusion);
+
+            fusion.quaternion().addRouteAsync(new RouteBuilder() {
+                @Override
+                public void configure(RouteComponent source) {
+                    source.stream(new Subscriber() {
+                        @Override
+                        public void apply(Data data, Object... env) {
+                            Log.i("Fusion", "Quaternion = " + data.value(Quaternion.class));
+                        }
+                    });
+                }
+            }).continueWith(new Continuation<Route, Void>() {
+                @Override
+                public Void then(Task<Route> task) throws Exception {
+                    fusion.quaternion().start();
+                    fusion.start();
+                    return null;
+                }
+            });
+//            Accelerometer a = boards.get(x).getModule(Accelerometer.class);
+//            accelModules.add(a);
+//            GyroBmi160 g = boards.get(x).getModule(GyroBmi160.class);
+//            gyroModules.add(g);
+//            a.configure()
+//                    .odr(25f)
+//                    .range(4f)
+//                    .commit();
+//            g.configure()
+//                    .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
+//                    .range(GyroBmi160.Range.FSR_2000)
+//                    .commit();
+//            a.acceleration().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
+//                Log.i("Acceleration", data.value(Acceleration.class).toString());
+//            })).continueWith((Continuation<Route, Void>) task -> {
+//                a.acceleration().start();
+//                a.start();
+//                return null;
+//            });
+//            g.angularVelocity().addRouteAsync(source -> source.stream(new Subscriber() {
+//                @Override
+//                public void apply(Data data, Object... env) {
+//                    Log.i("Gyroscope", data.value(AngularVelocity.class).toString());
+//                }
+//            })).continueWith((Continuation<Route, Void>) task -> {
+//                g.angularVelocity();
+//                g.start();
+//                return null;
+//            });
+        }
+    }
+
+
+    private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board, TextView view) {
+        int id = s.getPreset_id();
+        if(id > -1) {
+            AppExecutors.getInstance().diskIO().execute(() -> {
+                view.setBackgroundResource(R.color.sensorBoxVibrating);
+                Preset p = pDatabase.pDao().loadPresetFromId(id);
+                if (p != null) {
+                    System.out.println("Playing preset " + p.getName());
+                    if(p.isFromCSV()) {
+                        sendHapticFromCSV(p.getCsvFile(), board);
+                    }
+                    else {
+                        for (int i = 0; i < p.getNumCycles(); i++) {
+                            board.getModule(Haptic.class).startMotor((short) (p.getOn_time() * 1000));
+                            try {
+                                Thread.sleep((long) (p.getOn_time() * 1000) + (long) (p.getOff_time() * 1000));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        } //end for
+                    }
+                }
+                else {
+                    System.out.println("No preset found. Id: " + id);
+                }
+                view.setBackgroundResource(R.color.sensorBoxConnected);
+            }); //end async
+        }//end if
+        else { //no sensor detected
+            Toast.makeText(getActivity().getApplicationContext(), "No preset assigned to this sensor.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void sendHapticFromCSV(int fileId, MetaWearBoard board) {
         AppExecutors.getInstance().diskIO().execute(() -> {
             final HapticCSV file = csvDb.hapticsDao().loadCSVFileById(fileId);
@@ -307,65 +465,4 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private void retrieveSensors() {
-        List<SensorDevice> sensors = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
-        for (int i = 0; i < sensors.size(); i++) {
-            addSensorBox(sensors.get(i), i);
-        }
-    }
-
-    private void retrievePresets() {
-        AppExecutors.getInstance().diskIO().execute(() -> {
-                final List<String> p_list = pDatabase.pDao().loadAllPresetNames();
-                getActivity().runOnUiThread(() -> {
-                    presets = p_list;
-                    ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(), android.R.layout.simple_spinner_item, presets);
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                    presetSpinner.setAdapter(adapter);
-                });
-        });
-    }
-
-    private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board) {
-        int id = s.getPreset_id();
-        if(id > -1) {
-            AppExecutors.getInstance().diskIO().execute(() -> {
-                Preset p = pDatabase.pDao().loadPresetFromId(id);
-                if (p != null) {
-                    System.out.println("Playing preset " + p.getName());
-                    if(p.isFromCSV()) {
-                        sendHapticFromCSV(p.getCsvFile(), board);
-                    }
-                    else {
-                        for (int i = 0; i < p.getNumCycles(); i++) {
-                            board.getModule(Haptic.class).startMotor((short) (p.getOn_time() * 1000));
-                            try {
-                                Thread.sleep((long) (p.getOn_time() * 1000) + (long) (p.getOff_time() * 1000));
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        } //end for
-                    }
-                }
-                else {
-                    System.out.println("No preset found. Id: " + id);
-                 }
-        }); //end async
-        }//end if
-        else { //no sensor detected
-            Toast.makeText(getActivity().getApplicationContext(), "No preset assigned to this sensor.", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    public boolean onLongClick(View v) {
-        if(!isLocked) {
-//            ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
-//            ClipData data = new ClipData(v.getTag().toString(), new String[] {ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
-//            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
-//            v.startDrag(data, shadow, null, 0);
-        }
-        return false;
-    }
 }
