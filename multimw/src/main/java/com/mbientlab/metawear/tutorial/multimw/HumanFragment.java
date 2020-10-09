@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -32,6 +31,7 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
@@ -41,21 +41,21 @@ import com.mbientlab.metawear.builder.RouteBuilder;
 import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.AngularVelocity;
-import com.mbientlab.metawear.data.Quaternion;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
-import com.mbientlab.metawear.module.SensorFusionBosch;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import bolts.Capture;
 import bolts.Continuation;
 import bolts.Task;
 
@@ -70,7 +70,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private View sensorSettingsBar;
     private EditText sensorName;
     private Spinner presetSpinner;
-    List<SensorFusionBosch> fusionModules = new ArrayList<>();
+    List<Accelerometer> accelModules = new ArrayList<>();
+    // List<Capture<Accelerometer>> accelCaptures = new ArrayList<>();
+    List<GyroBmi160> gyroModules = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -142,15 +144,21 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 //RECORDING CODE
 //                final String filename = "Yolow"+ LocalDateTime.now() + ".csv";
 //                final File path = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
-               startRecordingData();
+                for(int x = 0; x < accelModules.size(); x++) {
+                    accelModules.get(x).start();
+                    accelModules.get(x).acceleration().start();
+                    gyroModules.get(x).angularVelocity().start();
+                    gyroModules.get(x).start();
+                }
             } else {
                 record_button.setText(R.string.start_recording);
                 lock_button.setEnabled(true);
-                for(int x = 0; x < fusionModules.size(); x++) {
-                    fusionModules.get(x).stop();
-                    fusionModules.get(x).quaternion().stop();
+                for(int x = 0; x < accelModules.size(); x++) {
+                    accelModules.get(x).stop();
+                    accelModules.get(x).acceleration().stop();
+                    gyroModules.get(x).angularVelocity().stop();
+                    gyroModules.get(x).stop();
                 }
-               fusionModules.clear();
             }
         });
 
@@ -198,7 +206,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         newDeviceState.setPreset_id(MainActivityContainer.getDefaultPresetId());
         final MetaWearBoard newBoard = binder.getMetaWearBoard(btDevice);
 
-         MainActivityContainer.addDeviceToStates(newDeviceState);
+        MainActivityContainer.addDeviceToStates(newDeviceState);
         MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
@@ -207,12 +215,34 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             newDeviceState.getView().setBackgroundResource(R.color.sensorBoxDisconnected);
         })
         );
+
         newBoard.connectAsync().onSuccessTask(task -> {
-            getActivity().runOnUiThread(() -> {
-                newDeviceState.setConnecting(false);
+            Log.i("ADDNEWDEVICE", "Connected to " + newDeviceState.getUid());
+            Accelerometer a = newBoard.getModule(Accelerometer.class);
+            a.configure()
+                    .odr(25f)
+                    .commit();
+            accelModules.add(a);
+            return a.acceleration().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
+                Log.i("accelerometer", data.value(Acceleration.class).toString());
+            }));
+        }).onSuccessTask(task -> {
+                GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
+                g.configure()
+                        .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
+                        .range(GyroBmi160.Range.FSR_2000)
+                        .commit();
+                gyroModules.add(g);
+                return g.angularVelocity().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
+                    Log.i("gyroscope", data.value(AngularVelocity.class).toString());
+                }));
+        }).continueWith((Continuation<Route, Void>) task -> {
+            if(task.isFaulted()) {
+                Log.w("yolow", "Failed to configure app", task.getError());
+            }
+            else {
                 newDeviceState.getView().setBackgroundResource(R.color.sensorBoxConnected);
-                addSensorBox(newDeviceState);
-            });
+            }
             return null;
         });
     }
@@ -338,68 +368,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 });
         });
     }
-
-    private void startRecordingData() {
-        List<MetaWearBoard> boards = new ArrayList<>(MainActivityContainer.getStateToBoards().values());
-        for (int x = 0; x < boards.size(); x++) {
-            SensorFusionBosch fusion = boards.get(x).getModule(SensorFusionBosch.class);
-            fusion.configure()
-                    .mode(SensorFusionBosch.Mode.NDOF)
-                    .accRange(SensorFusionBosch.AccRange.AR_16G)
-                    .gyroRange(SensorFusionBosch.GyroRange.GR_2000DPS)
-                    .commit();
-            fusionModules.add(fusion);
-
-            fusion.quaternion().addRouteAsync(new RouteBuilder() {
-                @Override
-                public void configure(RouteComponent source) {
-                    source.stream(new Subscriber() {
-                        @Override
-                        public void apply(Data data, Object... env) {
-                            Log.i("Fusion", "Quaternion = " + data.value(Quaternion.class));
-                        }
-                    });
-                }
-            }).continueWith(new Continuation<Route, Void>() {
-                @Override
-                public Void then(Task<Route> task) throws Exception {
-                    fusion.quaternion().start();
-                    fusion.start();
-                    return null;
-                }
-            });
-//            Accelerometer a = boards.get(x).getModule(Accelerometer.class);
-//            accelModules.add(a);
-//            GyroBmi160 g = boards.get(x).getModule(GyroBmi160.class);
-//            gyroModules.add(g);
-//            a.configure()
-//                    .odr(25f)
-//                    .range(4f)
-//                    .commit();
-//            g.configure()
-//                    .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
-//                    .range(GyroBmi160.Range.FSR_2000)
-//                    .commit();
-//            a.acceleration().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
-//                Log.i("Acceleration", data.value(Acceleration.class).toString());
-//            })).continueWith((Continuation<Route, Void>) task -> {
-//                a.acceleration().start();
-//                a.start();
-//                return null;
-//            });
-//            g.angularVelocity().addRouteAsync(source -> source.stream(new Subscriber() {
-//                @Override
-//                public void apply(Data data, Object... env) {
-//                    Log.i("Gyroscope", data.value(AngularVelocity.class).toString());
-//                }
-//            })).continueWith((Continuation<Route, Void>) task -> {
-//                g.angularVelocity();
-//                g.start();
-//                return null;
-//            });
-        }
-    }
-
 
     private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board, TextView view) {
         int id = s.getPreset_id();
