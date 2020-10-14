@@ -154,7 +154,6 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             spinner = itemView.findViewById(R.id.csv_spinner);
             retrieveCSVs(spinner);
 
-
             accel_sample = itemView.findViewById(R.id.text_sample_accel);
             gyro_sample = itemView.findViewById(R.id.text_sample_gyro);
             set_default_switch = itemView.findViewById(R.id.set_default_switch);

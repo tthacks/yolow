@@ -47,6 +47,9 @@ public class PresetFragment extends Fragment {
                 pDatabase.pDao().insertPreset(new_p);
                 retrievePresets();
             });
+            if(adapter.getItemCount() == 1) {
+                MainActivityContainer.setDefaultIndex(0, new_p.getId(), new_p.getName());
+            }
         });
     }
 

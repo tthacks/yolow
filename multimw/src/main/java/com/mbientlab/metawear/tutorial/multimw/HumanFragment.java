@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -31,31 +32,29 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-import com.mbientlab.metawear.AsyncDataProducer;
-import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
-import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.RouteBuilder;
-import com.mbientlab.metawear.builder.RouteComponent;
+import com.mbientlab.metawear.builder.filter.Comparison;
+import com.mbientlab.metawear.builder.filter.ThresholdOutput;
+import com.mbientlab.metawear.builder.function.Function1;
 import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.AngularVelocity;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
+import com.mbientlab.metawear.module.Logging;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
-import java.lang.reflect.Array;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import bolts.Capture;
 import bolts.Continuation;
 import bolts.Task;
 
@@ -71,8 +70,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private EditText sensorName;
     private Spinner presetSpinner;
     List<Accelerometer> accelModules = new ArrayList<>();
-    // List<Capture<Accelerometer>> accelCaptures = new ArrayList<>();
     List<GyroBmi160> gyroModules = new ArrayList<>();
+    List<Logging> logModules = new ArrayList<>();
+    List<String> filenames = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -141,10 +141,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             if (isRecording) {
                 record_button.setText(R.string.stop_recording);
                 lock_button.setEnabled(false);
-                //RECORDING CODE
-//                final String filename = "Yolow"+ LocalDateTime.now() + ".csv";
-//                final File path = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
                 for(int x = 0; x < accelModules.size(); x++) {
+//                    logModules.get(x).start(false);
                     accelModules.get(x).start();
                     accelModules.get(x).acceleration().start();
                     gyroModules.get(x).angularVelocity().start();
@@ -158,7 +156,10 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     accelModules.get(x).acceleration().stop();
                     gyroModules.get(x).angularVelocity().stop();
                     gyroModules.get(x).stop();
+//                    logModules.get(x).stop();
+//                    downloadLogs(logModules.get(x), filenames.get(x));
                 }
+           //  tearDownBoards();
             }
         });
 
@@ -181,6 +182,34 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void downloadLogs(Logging logging, String filename) {
+//        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+//        String filePath = dir + File.separator + filename;
+//        File f = new File(filePath);
+//        PrintStream fileStream = null;
+//        try {
+//            fileStream = new PrintStream(filename);
+//        System.setOut(fileStream);
+
+        logging.downloadAsync()
+                .continueWithTask((Continuation<Void, Task<Void>>) task -> {
+                    Log.i("MainActivity", "Download completed");
+                    return null;
+                });
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        }
+
+    }
+
+    private void tearDownBoards() {
+        List<MetaWearBoard> boards = new ArrayList<>(MainActivityContainer.getStateToBoards().values());
+        for(int x = 0; x < boards.size(); x++) {
+            boards.get(x).tearDown();
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -200,6 +229,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     @Override
     public void onServiceDisconnected(ComponentName name) {}
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void addNewDevice(BluetoothDevice btDevice) {
         final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), getActivity().getApplicationContext());
         newDeviceState.setPresetName(MainActivityContainer.getDefaultPresetName());
@@ -217,15 +247,21 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         );
 
         newBoard.connectAsync().onSuccessTask(task -> {
-            Log.i("ADDNEWDEVICE", "Connected to " + newDeviceState.getUid());
             Accelerometer a = newBoard.getModule(Accelerometer.class);
+            Logging l = newBoard.getModule(Logging.class);
+            logModules.add(l);
+            String writeToFile = newDeviceState.getFriendlyName() + "_" + LocalDateTime.now() + ".csv";
+            filenames.add(writeToFile);
             a.configure()
                     .odr(25f)
                     .commit();
             accelModules.add(a);
-            return a.acceleration().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
-                Log.i("accelerometer", data.value(Acceleration.class).toString());
-            }));
+            return a.acceleration().addRouteAsync(source ->
+                    source.map(Function1.RSS).lowpass((byte) 4).filter(ThresholdOutput.BINARY, 0.5f)
+                            .multicast()
+                            .to().stream((data, env) -> System.out.println(newDeviceState.getFriendlyName()+ "," + data.formattedTimestamp() + ",accel," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z()))
+                            .to().filter(Comparison.EQ, 1).stream((data, env) -> {System.out.println(newDeviceState.getFriendlyName() + " sending haptic"); sendHapticFromPreset(newDeviceState, newBoard);})
+                            .end());
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
@@ -233,16 +269,20 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                         .range(GyroBmi160.Range.FSR_2000)
                         .commit();
                 gyroModules.add(g);
-                return g.angularVelocity().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
-                    Log.i("gyroscope", data.value(AngularVelocity.class).toString());
-                }));
+            return g.angularVelocity().addRouteAsync(source ->
+                    source.stream((data, env) -> System.out.println(newDeviceState.getFriendlyName()+ "," + data.formattedTimestamp() + ",gyro," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + data.value(AngularVelocity.class).z())));
         }).continueWith((Continuation<Route, Void>) task -> {
             if(task.isFaulted()) {
                 Log.w("yolow", "Failed to configure app", task.getError());
+                MainActivityContainer.getDeviceStates().remove(newDeviceState);
+                MainActivityContainer.getStateToBoards().remove(newBoard);
+                newBoard.tearDown();
+                newDeviceState.getView().setVisibility(View.GONE);
             }
             else {
+                newDeviceState.setConnecting(false);
                 newDeviceState.getView().setBackgroundResource(R.color.sensorBoxConnected);
-            }
+                }
             return null;
         });
     }
@@ -250,10 +290,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     @Override
     public boolean onLongClick(View v) {
         if(!isLocked) {
-//            ClipData.Item item = new ClipData.Item((CharSequence) v.getTag());
-//            ClipData data = new ClipData(v.getTag().toString(), new String[] {ClipDescription.MIMETYPE_TEXT_PLAIN}, item);
-//            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
-//            v.startDrag(data, shadow, null, 0);
+            //TODO: Implement onLongClick
         }
         return false;
     }
@@ -266,7 +303,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 //send haptic
                 MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.getUid());
                 if(board != null) {
-                    sendHapticFromPreset(s, board, (TextView) v);
+                    sendHapticFromPreset(s, board);
                 }
             }
             else {
@@ -287,40 +324,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     public boolean onDrag(View v, DragEvent event) {
         if (!isLocked) {
-//            System.out.println("draggin");
-//            int action = event.getAction();
-//            switch (action) {
-//                case DragEvent.ACTION_DRAG_STARTED:
-//                    System.out.println("started");
-//                    if(event.getClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
-//                        v.setBackgroundColor(Color.BLUE);
-//                        v.invalidate();
-//                        return true;
-//                    }
-//                    return false;
-//                case DragEvent.ACTION_DRAG_ENTERED:
-//                     System.out.println("entered");
-//                     return true;
-//                 case DragEvent.ACTION_DRAG_LOCATION:
-//                     return true;
-//                case DragEvent.ACTION_DRAG_ENDED:
-//                    System.out.println("ended");
-//                    if(event.getResult()) {
-//                        System.out.println("the drop was handled");
-//                    }
-//                    else {
-//                        System.out.println("The drop didn't work.");
-//                    }
-//                    return true;
-//                case DragEvent.ACTION_DRAG_EXITED:
-//                     System.out.println("exited");
-//                     return true;
-//                case DragEvent.ACTION_DROP:
-//                     System.out.println("dropped");
-//                     v.setBackgroundColor(Color.RED);
-//                default:
-//                    return false;
-//            }
+            //TODO: implement onDrag
         }
         System.out.println("Drag and drop not yet implemented.");
         return false;
@@ -369,11 +373,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
-    private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board, TextView view) {
+    private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board) {
         int id = s.getPreset_id();
         if(id > -1) {
             AppExecutors.getInstance().diskIO().execute(() -> {
-                view.setBackgroundResource(R.color.sensorBoxVibrating);
+                s.getView().setBackgroundResource(R.color.sensorBoxVibrating);
                 Preset p = pDatabase.pDao().loadPresetFromId(id);
                 if (p != null) {
                     System.out.println("Playing preset " + p.getName());
@@ -394,11 +398,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 else {
                     System.out.println("No preset found. Id: " + id);
                 }
-                view.setBackgroundResource(R.color.sensorBoxConnected);
+                s.getView().setBackgroundResource(R.color.sensorBoxConnected);
             }); //end async
         }//end if
         else { //no sensor detected
-            Toast.makeText(getActivity().getApplicationContext(), "No preset assigned to this sensor.", Toast.LENGTH_SHORT).show();
+//            Toast.makeText(getActivity().getApplicationContext(), "No preset assigned to this sensor.", Toast.LENGTH_SHORT).show();
         }
     }
 
