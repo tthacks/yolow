@@ -3,6 +3,8 @@ package com.mbientlab.metawear.tutorial.multimw;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
+import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -58,12 +60,12 @@ import java.util.Objects;
 import bolts.Continuation;
 import bolts.Task;
 
-public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener, View.OnLongClickListener {
+public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
     private BtleService.LocalBinder binder;
     private PresetDatabase pDatabase;
     private CSVDatabase csvDb;
-    private boolean isLocked, isRecording;
+    private boolean isLocked, isRecording, dragging;
     private List<String> presets;
     private TextView lastSelected = null;
     private View sensorSettingsBar;
@@ -287,17 +289,21 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
-    @Override
-    public boolean onLongClick(View v) {
-        if(!isLocked) {
-            //TODO: Implement onLongClick
-        }
-        return false;
-    }
+//    @Override
+//    public boolean onLongClick(View v) {
+//        System.out.println("on long click detected");
+//        if(!isLocked) {
+//            lastSelected = (TextView) v;
+//
+//        }
+//        return false;
+//    }
 
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
         SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
+        float x = event.getX();
+        float y = event.getY();
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             if(isLocked) {
                 //send haptic
@@ -319,14 +325,33 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             }
             return true;
         }
+        else if(event.getAction() == MotionEvent.ACTION_MOVE) {
+            if (!isLocked) {
+                ClipData data = ClipData.newPlainText("", "");
+                View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
+                v.startDrag(data, shadowBuilder, v, 0);
+                return true;
+            }
+        }
         return false;
     }
 
     public boolean onDrag(View v, DragEvent event) {
+        System.out.println("Starting position: " + lastSelected.getX() + " " + lastSelected.getY());
         if (!isLocked) {
-            //TODO: implement onDrag
+            System.out.println("Drag type: " + event.getAction());
+            if(event.getAction() == DragEvent.ACTION_DRAG_STARTED) {
+                return true;
+            }
+            else if(event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
+                float x = event.getX();
+                float y = event.getY() - 300;
+                lastSelected.setX(x - lastSelected.getWidth() / 2);
+                lastSelected.setY(y);
+                System.out.println("Ending position: " + lastSelected.getX() + " " + lastSelected.getY());
+                return true;
+            }
         }
-        System.out.println("Drag and drop not yet implemented.");
         return false;
     }
 
@@ -355,7 +380,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             t.setBackgroundResource(R.color.sensorBoxConnected);
         }
         t.setOnTouchListener(this);
-        t.setOnLongClickListener(this);
+//        t.setOnLongClickListener(this);
         t.setOnDragListener(this);
         t.setLayoutParams(new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT ));
         constraintLayout.addView(t);
