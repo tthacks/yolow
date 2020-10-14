@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -13,6 +14,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.RequiresApi;
 
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
@@ -113,6 +116,7 @@ public class MainActivityContainer extends AppCompatActivity {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(requestCode == REQUEST_START_BLE_SCAN) {
@@ -129,8 +133,10 @@ public class MainActivityContainer extends AppCompatActivity {
                 uri = data.getData();
                 try {
                     HapticCSV newFile = readTextFromUri(uri);
-                    insertIntoCSVDb(newFile);
-                    Toast.makeText(getApplicationContext(), "File " + newFile.getFilename() +  " successfully uploaded", Toast.LENGTH_SHORT).show();
+                    if(newFile != null) {
+                        insertIntoCSVDb(newFile);
+                        Toast.makeText(getApplicationContext(), "File " + newFile.getFilename() + " successfully uploaded", Toast.LENGTH_SHORT).show();
+                    }
                 }
                 catch(IOException e) {
                     Toast.makeText(getApplicationContext(), "File not found.", Toast.LENGTH_SHORT).show();
@@ -142,17 +148,27 @@ public class MainActivityContainer extends AppCompatActivity {
     private HapticCSV readTextFromUri(Uri uri) throws IOException {
         StringBuilder onTime = new StringBuilder();
         StringBuilder offTime = new StringBuilder();
+        boolean badFormatting = false;
         try (
                 InputStream inputStream =
                      getContentResolver().openInputStream(uri);
              BufferedReader reader = new BufferedReader(
                      new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             String line = reader.readLine(); //skip headers
-            while ((line = reader.readLine()) != null) {
+            while ((line = reader.readLine()) != null && !badFormatting) {
                 String[] tokens = line.split(",");
-                onTime.append(tokens[0]).append(",");
-                offTime.append(tokens[1]).append(",");
+                if(tokens.length == 2) {
+                    onTime.append(tokens[0]).append(",");
+                    offTime.append(tokens[1]).append(",");
+                }
+                else {
+                    badFormatting = true;
+                }
             }
+        }
+        if(badFormatting) {
+            Toast.makeText(getApplicationContext(), "The CSV file was poorly formed and could not be uploaded. Make sure there are only two columns.", Toast.LENGTH_LONG);
+            return null;
         }
         return new HapticCSV(uri.getLastPathSegment(), onTime.toString(), offTime.toString());
     }
