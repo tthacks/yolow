@@ -5,6 +5,7 @@ import android.widget.TextView;
 
 public class SensorDevice {
     private String uid;
+    private String uidFileFriendly;
     private String friendlyName;
     private String presetName;
     private boolean connecting;
@@ -16,6 +17,7 @@ public class SensorDevice {
     public SensorDevice(String uid, String friendlyName, Context context) {
 
         this.uid = uid;
+        this.uidFileFriendly = uid.replace(":", "-");
         this.friendlyName = friendlyName;
         this.connecting = true;
         this.preset_id = MainActivityContainer.getDefaultIndex();
@@ -40,6 +42,10 @@ public class SensorDevice {
 
     public String getUid() {
         return uid;
+    }
+
+    public String getUidFileFriendly() {
+        return uidFileFriendly;
     }
 
     public String getFriendlyName() {

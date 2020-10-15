@@ -9,10 +9,12 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
+import android.provider.DocumentsContract;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
@@ -37,15 +39,11 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.filter.Comparison;
-import com.mbientlab.metawear.builder.filter.ThresholdOutput;
-import com.mbientlab.metawear.builder.function.Function1;
 import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.AngularVelocity;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
-import com.mbientlab.metawear.module.Logging;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
@@ -53,18 +51,20 @@ import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
 import bolts.Continuation;
 
-import static android.content.Context.MODE_PRIVATE;
 
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
+    private static final int CREATE_FILE = 9;
     private BtleService.LocalBinder binder;
     private PresetDatabase pDatabase;
     private CSVDatabase csvDb;
@@ -76,9 +76,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private Spinner presetSpinner;
     List<Accelerometer> accelModules = new ArrayList<>();
     List<GyroBmi160> gyroModules = new ArrayList<>();
-    List<File> gyro_files = new ArrayList<>();
-    List<File> accel_files = new ArrayList<>();
-    String hapticFile = "";
+    HashMap<String, FileWriter> gyro_files = new HashMap<>();
+    HashMap<String, FileWriter> accel_files = new HashMap<>();
+    FileWriter hapticWriter;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -144,25 +144,22 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
         record_button.setOnClickListener(v -> {
             isRecording = !isRecording;
+            isLocked = isRecording;
             if (isRecording) {
                 record_button.setText(R.string.stop_recording);
                 lock_button.setEnabled(false);
-//                try{
-//                    String timestamp = LocalDateTime.now().toString();
-//                    FileOutputStream hapticOut = getActivity().openFileOutput(timestamp + "_haptics" , MODE_PRIVATE);
-//                    OutputStreamWriter outputWriter = new OutputStreamWRiter
-
-                    for(int x = 0; x < accelModules.size(); x++) {
+                LocalDateTime now = LocalDateTime.now();
+                //Time format (removing forbidden chars such as :)
+                String timestamp = now.getYear() + "-" + now.getMonthValue() + "-" + now.getDayOfMonth() + "_" + now.getHour() + "-" + now.getMinute() + "-" + now.getSecond();
+                boolean fileSuccessful = createSessionFiles(timestamp);
+                if(fileSuccessful) {
+                    for (int x = 0; x < accelModules.size(); x++) {
                         accelModules.get(x).start();
                         accelModules.get(x).acceleration().start();
                         gyroModules.get(x).angularVelocity().start();
                         gyroModules.get(x).start();
                     }
-//                }
-//                catch( Exception e) {
-//                    e.printStackTrace();
-//                }
-
+                }
             } else {
                 record_button.setText(R.string.start_recording);
                 lock_button.setEnabled(true);
@@ -172,6 +169,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     gyroModules.get(x).angularVelocity().stop();
                     gyroModules.get(x).stop();
                 }
+                closeSessionFiles();
            //  tearDownBoards();
             }
         });
@@ -192,7 +190,81 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 }
             }
         });
+    }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private boolean createSessionFiles(String timestamp) {
+        String state = Environment.getExternalStorageState();
+        if (!Environment.MEDIA_MOUNTED.equals(state)) {
+            //If it isn't mounted - we can't write into it.
+            return false;
+        }
+        //Create a new file that points to the root directory, with the given name:
+            File dir = new File(getActivity().getApplicationContext().getExternalFilesDir(null), "yolow_" + timestamp);
+        if(!dir.mkdirs()) {
+            dir.mkdirs();
+        }
+
+        try {
+            File haptics_file = new File(dir, timestamp + "_haptic.csv");
+            if(!haptics_file.exists()) {
+                haptics_file.createNewFile();
+            }
+            hapticWriter = new FileWriter(haptics_file);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<SensorDevice> sensorDevices = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
+        for(int x = 0; x < sensorDevices.size(); x++) {
+            SensorDevice s = sensorDevices.get(x);
+            if(s == null) {
+                System.out.println("Sorry, something's gone wrong. Could not find the sensors.");
+                return false;
+            }
+            String sensorFileName = s.getFriendlyName() + "_" + timestamp + "_" + s.getUidFileFriendly();
+            try {
+                File newAccelFile = new File(dir, sensorFileName + "_Accelerometer.csv");
+                if(!newAccelFile.exists()) {
+                    newAccelFile.createNewFile();
+                }
+                File newGyroFile = new File(dir, sensorFileName + "_Gyroscope.csv");
+                if(!newGyroFile.exists()) {
+                    newGyroFile.createNewFile();
+                }
+                FileWriter accelWriter = new FileWriter(newAccelFile);
+                FileWriter gyroWriter = new FileWriter(newGyroFile);
+                //headers
+                accelWriter.write("timestamp, x, y, z \n");
+                gyroWriter.write("timestamp, x, y, z \n");
+                accel_files.put(s.getUid(), accelWriter);
+                gyro_files.put(s.getUid(), gyroWriter);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void closeSessionFiles() {
+        List<FileWriter> accelFiles = new ArrayList<>(accel_files.values());
+        List<FileWriter> gyroFiles = new ArrayList<>(gyro_files.values());
+        try {
+            hapticWriter.flush();
+            hapticWriter.close();
+            for (int x = 0; x < accelFiles.size(); x++) {
+                accelFiles.get(x).flush();
+                accelFiles.get(x).close();
+                gyroFiles.get(x).flush();
+                gyroFiles.get(x).close();
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void tearDownBoards() {
@@ -245,7 +317,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     .commit();
             accelModules.add(a);
             return a.acceleration().addRouteAsync(source ->
-                    source.stream((data, env) -> System.out.println(newDeviceState.getFriendlyName()+ "," + data.formattedTimestamp() + ",accel," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + data.value(Acceleration.class).z())));
+                    source.stream((data, env) -> {
+                        try {
+                            accel_files.get(newDeviceState.getUid()).write(data.formattedTimestamp() + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + data.value(Acceleration.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }));
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
@@ -254,7 +332,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                         .commit();
                 gyroModules.add(g);
             return g.angularVelocity().addRouteAsync(source ->
-                    source.stream((data, env) -> System.out.println(newDeviceState.getFriendlyName()+ "," + data.formattedTimestamp() + ",gyro," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + data.value(AngularVelocity.class).z())));
+                    source.stream((data, env) -> {
+                        try {
+                            gyro_files.get(newDeviceState.getUid()).write(data.formattedTimestamp() + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + data.value(AngularVelocity.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }));
         }).continueWith((Continuation<Route, Void>) task -> {
             if(task.isFaulted()) {
                 Log.w("yolow", "Failed to configure app", task.getError());
@@ -271,6 +355,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
         SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
@@ -318,6 +403,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             else if(event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
                 float x = event.getX();
                 float y = event.getY() - 300;
+                if(y > 0) {
+                    y = 0;
+                }
                 lastSelected.setX(x - lastSelected.getWidth() / 2);
                 lastSelected.setY(y);
                 System.out.println("Ending position: " + lastSelected.getX() + " " + lastSelected.getY());
@@ -370,6 +458,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board) {
         int id = s.getPreset_id();
         if(id > -1) {
@@ -378,6 +467,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 Preset p = pDatabase.pDao().loadPresetFromId(id);
                 if (p != null) {
                     System.out.println("Playing preset " + p.getName());
+                    if(isRecording) {
+                        try {
+                            hapticWriter.append(LocalDateTime.now().toString() + "," + s.getFriendlyName() + "," + p.getName());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                     if(p.isFromCSV()) {
                         sendHapticFromCSV(p.getCsvFile(), board);
                     }
