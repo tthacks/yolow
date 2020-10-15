@@ -52,20 +52,23 @@ import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import bolts.Continuation;
-import bolts.Task;
+
+import static android.content.Context.MODE_PRIVATE;
 
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
     private BtleService.LocalBinder binder;
     private PresetDatabase pDatabase;
     private CSVDatabase csvDb;
-    private boolean isLocked, isRecording, dragging;
+    private boolean isLocked, isRecording;
     private List<String> presets;
     private TextView lastSelected = null;
     private View sensorSettingsBar;
@@ -73,8 +76,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private Spinner presetSpinner;
     List<Accelerometer> accelModules = new ArrayList<>();
     List<GyroBmi160> gyroModules = new ArrayList<>();
-    List<Logging> logModules = new ArrayList<>();
-    List<String> filenames = new ArrayList<>();
+    List<File> gyro_files = new ArrayList<>();
+    List<File> accel_files = new ArrayList<>();
+    String hapticFile = "";
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -143,13 +147,22 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             if (isRecording) {
                 record_button.setText(R.string.stop_recording);
                 lock_button.setEnabled(false);
-                for(int x = 0; x < accelModules.size(); x++) {
-//                    logModules.get(x).start(false);
-                    accelModules.get(x).start();
-                    accelModules.get(x).acceleration().start();
-                    gyroModules.get(x).angularVelocity().start();
-                    gyroModules.get(x).start();
-                }
+//                try{
+//                    String timestamp = LocalDateTime.now().toString();
+//                    FileOutputStream hapticOut = getActivity().openFileOutput(timestamp + "_haptics" , MODE_PRIVATE);
+//                    OutputStreamWriter outputWriter = new OutputStreamWRiter
+
+                    for(int x = 0; x < accelModules.size(); x++) {
+                        accelModules.get(x).start();
+                        accelModules.get(x).acceleration().start();
+                        gyroModules.get(x).angularVelocity().start();
+                        gyroModules.get(x).start();
+                    }
+//                }
+//                catch( Exception e) {
+//                    e.printStackTrace();
+//                }
+
             } else {
                 record_button.setText(R.string.start_recording);
                 lock_button.setEnabled(true);
@@ -158,8 +171,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     accelModules.get(x).acceleration().stop();
                     gyroModules.get(x).angularVelocity().stop();
                     gyroModules.get(x).stop();
-//                    logModules.get(x).stop();
-//                    downloadLogs(logModules.get(x), filenames.get(x));
                 }
            //  tearDownBoards();
             }
@@ -181,27 +192,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 }
             }
         });
-
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-    private void downloadLogs(Logging logging, String filename) {
-//        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-//        String filePath = dir + File.separator + filename;
-//        File f = new File(filePath);
-//        PrintStream fileStream = null;
-//        try {
-//            fileStream = new PrintStream(filename);
-//        System.setOut(fileStream);
-
-        logging.downloadAsync()
-                .continueWithTask((Continuation<Void, Task<Void>>) task -> {
-                    Log.i("MainActivity", "Download completed");
-                    return null;
-                });
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        }
 
     }
 
@@ -250,20 +240,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
         newBoard.connectAsync().onSuccessTask(task -> {
             Accelerometer a = newBoard.getModule(Accelerometer.class);
-            Logging l = newBoard.getModule(Logging.class);
-            logModules.add(l);
-            String writeToFile = newDeviceState.getFriendlyName() + "_" + LocalDateTime.now() + ".csv";
-            filenames.add(writeToFile);
             a.configure()
                     .odr(25f)
                     .commit();
             accelModules.add(a);
             return a.acceleration().addRouteAsync(source ->
-                    source.map(Function1.RSS).lowpass((byte) 4).filter(ThresholdOutput.BINARY, 0.5f)
-                            .multicast()
-                            .to().stream((data, env) -> System.out.println(newDeviceState.getFriendlyName()+ "," + data.formattedTimestamp() + ",accel," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z()))
-                            .to().filter(Comparison.EQ, 1).stream((data, env) -> {System.out.println(newDeviceState.getFriendlyName() + " sending haptic"); sendHapticFromPreset(newDeviceState, newBoard);})
-                            .end());
+                    source.stream((data, env) -> System.out.println(newDeviceState.getFriendlyName()+ "," + data.formattedTimestamp() + ",accel," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + data.value(Acceleration.class).z())));
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
@@ -288,16 +270,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             return null;
         });
     }
-
-//    @Override
-//    public boolean onLongClick(View v) {
-//        System.out.println("on long click detected");
-//        if(!isLocked) {
-//            lastSelected = (TextView) v;
-//
-//        }
-//        return false;
-//    }
 
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
