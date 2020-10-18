@@ -136,7 +136,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         Button record_button = view.findViewById(R.id.button_record);
         Button scan_devices_button = view.findViewById(R.id.scan_devices_button);
         scan_devices_button.setOnClickListener(v -> getActivity().startActivityForResult(new Intent(getActivity(), ScannerActivity.class), REQUEST_START_BLE_SCAN));
-        
+
         lock_button.setOnClickListener(v -> {
             isLocked = !isLocked;
             if (isLocked) {
