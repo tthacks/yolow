@@ -1,5 +1,6 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
@@ -17,6 +18,7 @@ import java.util.List;
 
 public class PresetFragment extends Fragment {
 
+    private static final int PICKFILE_REQUEST_CODE = 2;
     private PresetAdapter adapter;
     private PresetDatabase pDatabase;
 
@@ -36,6 +38,7 @@ public class PresetFragment extends Fragment {
     public void onViewCreated(View view, Bundle savedInstanceState) {
         //TODO: Known bug: recycler does not scroll when >4 items are in it
         RecyclerView recyclerView = view.findViewById(R.id.sessions);
+        Button upload_csv_button = view.findViewById(R.id.upload_csv_button);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);
         pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
@@ -50,6 +53,13 @@ public class PresetFragment extends Fragment {
             if(adapter.getItemCount() == 1) {
                 MainActivityContainer.setDefaultIndex(0, new_p.getId(), new_p.getName());
             }
+        });
+
+        upload_csv_button.setOnClickListener(v -> {
+            Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
+            chooseFile.addCategory(Intent.CATEGORY_OPENABLE);
+            chooseFile.setType("text/csv");
+            startActivityForResult(Intent.createChooser(chooseFile, "Choose a file to upload"), PICKFILE_REQUEST_CODE);
         });
     }
 

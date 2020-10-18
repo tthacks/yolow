@@ -52,30 +52,18 @@ public class MainActivityContainer extends AppCompatActivity {
         setContentView(R.layout.activity_main_container);
         csvDb = CSVDatabase.getInstance(this);
         //init button listeners
-        TextView title = findViewById(R.id.title);
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         Button goto_exports_button = findViewById(R.id.button_goto_exports);
-        Button scan_devices_button = findViewById(R.id.scan_devices_button);
-        Button upload_csv_button = findViewById(R.id.upload_csv_button);
-        upload_csv_button.setVisibility(View.GONE);
-        scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivityContainer.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
-        upload_csv_button.setOnClickListener(view -> {
-            Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
-            chooseFile.addCategory(Intent.CATEGORY_OPENABLE);
-            chooseFile.setType("text/csv");
-            startActivityForResult(Intent.createChooser(chooseFile, "Choose a file to upload"), PICKFILE_REQUEST_CODE);
-        });
-
+//        Button scan_devices_button = findViewById(R.id.scan_devices_button);
+//        scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivityContainer.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
 
         fm = getSupportFragmentManager();
         goto_human_button.setOnClickListener(view -> {
-                title.setText(R.string.sensor_map_header);
                 goto_human_button.setBackgroundResource(R.color.colorAccent);
                 goto_settings_button.setBackgroundResource(R.color.colorPrimary);
                 goto_exports_button.setBackgroundResource(R.color.colorPrimary);
-                scan_devices_button.setVisibility(View.VISIBLE);
-                upload_csv_button.setVisibility(View.GONE);
+
                 Fragment fragment = new HumanFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
                 transaction.replace(R.id.fragment_container, fragment);
@@ -83,14 +71,11 @@ public class MainActivityContainer extends AppCompatActivity {
                 transaction.commit();
         });
         goto_settings_button.setOnClickListener(view -> {
-                title.setText(R.string.presets_header);
                 View initView = findViewById(R.id.main_activity_content);
                 initView.setVisibility(View.GONE);
                 goto_human_button.setBackgroundResource(R.color.colorPrimary);
                 goto_settings_button.setBackgroundResource(R.color.colorAccent);
                 goto_exports_button.setBackgroundResource(R.color.colorPrimary);
-                scan_devices_button.setVisibility(View.GONE);
-                upload_csv_button.setVisibility(View.VISIBLE);
                 Fragment fragment = new PresetFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
                 transaction.replace(R.id.fragment_container, fragment);
@@ -99,14 +84,11 @@ public class MainActivityContainer extends AppCompatActivity {
         });
 
         goto_exports_button.setOnClickListener(view -> {
-                title.setText(R.string.exports_header);
                 View initView = findViewById(R.id.main_activity_content);
                 initView.setVisibility(View.GONE);
                 goto_human_button.setBackgroundResource(R.color.colorPrimary);
                 goto_settings_button.setBackgroundResource(R.color.colorPrimary);
                 goto_exports_button.setBackgroundResource(R.color.colorAccent);
-                scan_devices_button.setVisibility(View.GONE);
-                upload_csv_button.setVisibility(View.GONE);
                 Fragment fragment = new ExportFragment();
                 FragmentTransaction transaction = fm.beginTransaction();
                 transaction.replace(R.id.fragment_container, fragment);
@@ -119,6 +101,7 @@ public class MainActivityContainer extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        System.out.println("requestCode: " + requestCode + " " + resultCode + " " + data.toString());
         if(requestCode == REQUEST_START_BLE_SCAN) {
             if(data != null) {
                 BluetoothDevice selectedDevice = data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
@@ -127,7 +110,7 @@ public class MainActivityContainer extends AppCompatActivity {
                 }
             }
         }
-        else if(requestCode == PICKFILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+        if(requestCode == PICKFILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             Uri uri;
             if (data != null) {
                 uri = data.getData();

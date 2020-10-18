@@ -64,7 +64,7 @@ import bolts.Continuation;
 
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
-    private static final int CREATE_FILE = 9;
+    private static final int REQUEST_START_BLE_SCAN = 1;
     private BtleService.LocalBinder binder;
     private PresetDatabase pDatabase;
     private CSVDatabase csvDb;
@@ -108,7 +108,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         csvDb = CSVDatabase.getInstance(getActivity().getApplicationContext());
         //button controls
         sensorSettingsBar = view.findViewById(R.id.sensor_data_layout);
-        sensorSettingsBar.setVisibility(View.INVISIBLE);
         isLocked = false;
         isRecording = false;
         sensorName = view.findViewById(R.id.sensor_name);
@@ -132,8 +131,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {}
         });
+
         Button lock_button = view.findViewById(R.id.button_lock);
         Button record_button = view.findViewById(R.id.button_record);
+        Button scan_devices_button = view.findViewById(R.id.scan_devices_button);
+        scan_devices_button.setOnClickListener(v -> getActivity().startActivityForResult(new Intent(getActivity(), ScannerActivity.class), REQUEST_START_BLE_SCAN));
+        
         lock_button.setOnClickListener(v -> {
             isLocked = !isLocked;
             if (isLocked) {
@@ -206,7 +209,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         }
 
         try {
-            File haptics_file = new File(dir, timestamp + "_haptic.csv");
+            File haptics_file = new File(dir, timestamp + "_Haptic.csv");
             if(!haptics_file.exists()) {
                 haptics_file.createNewFile();
             }
@@ -235,8 +238,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 FileWriter accelWriter = new FileWriter(newAccelFile);
                 FileWriter gyroWriter = new FileWriter(newGyroFile);
                 //headers
-                accelWriter.write("timestamp, x, y, z \n");
-                gyroWriter.write("timestamp, x, y, z \n");
+                accelWriter.write("sensor timestamp,device timestamp,x y,z \n");
+                gyroWriter.write("sensor timestamp,device timestamp,x,y,z \n");
                 accel_files.put(s.getUid(), accelWriter);
                 gyro_files.put(s.getUid(), gyroWriter);
             }
@@ -295,6 +298,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void addNewDevice(BluetoothDevice btDevice) {
+        System.out.println("addNewDevice called");
         final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), getActivity().getApplicationContext());
         newDeviceState.setPresetName(MainActivityContainer.getDefaultPresetName());
         newDeviceState.setPreset_id(MainActivityContainer.getDefaultPresetId());
@@ -319,7 +323,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             return a.acceleration().addRouteAsync(source ->
                     source.stream((data, env) -> {
                         try {
-                            accel_files.get(newDeviceState.getUid()).write(data.formattedTimestamp() + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + data.value(Acceleration.class).z() + "\n");
+                            accel_files.get(newDeviceState.getUid()).write(data.formattedTimestamp() + "," + LocalDateTime.now().toString() + "," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -334,7 +338,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             return g.angularVelocity().addRouteAsync(source ->
                     source.stream((data, env) -> {
                         try {
-                            gyro_files.get(newDeviceState.getUid()).write(data.formattedTimestamp() + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + data.value(AngularVelocity.class).z() + "\n");
+                            gyro_files.get(newDeviceState.getUid()).write(data.formattedTimestamp() + "," + LocalDateTime.now().toString() + "," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -359,8 +363,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
         SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
-        float x = event.getX();
-        float y = event.getY();
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             if(isLocked) {
                 //send haptic
@@ -401,10 +403,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 return true;
             }
             else if(event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
-                float x = event.getX();
+                float x = event.getX() - lastSelected.getWidth() / 2;
                 float y = event.getY() - 300;
-                if(y > 0) {
+                if(y < 0) {
                     y = 0;
+                }
+                if(x < 0) {
+                    x = 0;
                 }
                 lastSelected.setX(x - lastSelected.getWidth() / 2);
                 lastSelected.setY(y);
