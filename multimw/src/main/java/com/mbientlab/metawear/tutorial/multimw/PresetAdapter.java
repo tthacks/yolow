@@ -90,7 +90,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         presetViewHolder.off_dur.setText("" + pList.get(i).getOff_time());
         presetViewHolder.gyro_sample.setText("" + pList.get(i).getGyro_sample());
         presetViewHolder.accel_sample.setText("" + pList.get(i).getAccel_sample());
-        presetViewHolder.set_default_switch.setChecked(i == MainActivityContainer.getDefaultIndex());
+        presetViewHolder.set_default_switch.setChecked(pList.get(i).isDefault());
         presetViewHolder.customCSV.setChecked(!pList.get(i).isFromCSV());
         presetViewHolder.csv_text.setText(pList.get(i).getCsvFileName());
         presetViewHolder.radioCSV.setChecked(pList.get(i).isFromCSV());
@@ -159,7 +159,10 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             set_default_switch = itemView.findViewById(R.id.set_default_switch);
 
             set_default_switch.setOnClickListener(view -> {
-                MainActivityContainer.setDefaultIndex(getAdapterPosition(), pList.get(getAdapterPosition()).getId(), pList.get(getAdapterPosition()).getName());
+                Preset p = pList.get(getAdapterPosition());
+                p.setDefault(true);
+                updateDefault(p);
+//                MainActivityContainer.setDefaultIndex(getAdapterPosition(), pList.get(getAdapterPosition()).getId(), pList.get(getAdapterPosition()).getName());
                 notifyDataSetChanged();
             });
 
@@ -196,18 +199,18 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             delete_button.setOnClickListener(view -> {
                 deletePreset(pList.get(getAdapterPosition()));
                 pList.remove(getAdapterPosition());
-                if(pList.size() == 0) {
-                    MainActivityContainer.setDefaultIndex(-1, -1, "");
-                }
-                else if (MainActivityContainer.getDefaultIndex() == getAdapterPosition()) { //is the default - reset to first in list
-                    MainActivityContainer.setDefaultIndex(0, pList.get(0).getId(), pList.get(0).getName());
-                }
-                else if(getAdapterPosition() < MainActivityContainer.getDefaultIndex()) {
-                    int newIndex = MainActivityContainer.getDefaultIndex() - 1;
-                       Preset p = pList.get(newIndex);
-                       MainActivityContainer.setDefaultIndex(newIndex, p.getId(), p.getName());
-                }
-                notifyDataSetChanged();
+//                if(pList.size() == 0) {
+//                    MainActivityContainer.setDefaultIndex(-1, -1, "");
+//                }
+//                else if (MainActivityContainer.getDefaultIndex() == getAdapterPosition()) { //is the default - reset to first in list
+//                    MainActivityContainer.setDefaultIndex(0, pList.get(0).getId(), pList.get(0).getName());
+//                }
+//                else if(getAdapterPosition() < MainActivityContainer.getDefaultIndex()) {
+//                    int newIndex = MainActivityContainer.getDefaultIndex() - 1;
+//                       Preset p = pList.get(newIndex);
+//                       MainActivityContainer.setDefaultIndex(newIndex, p.getId(), p.getName());
+//                }
+//                notifyDataSetChanged();
             });
 
             spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -326,12 +329,20 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             AppExecutors.getInstance().diskIO().execute(() -> pDatabase.pDao().updatePreset(p));
 }
 
+public void updateDefault(Preset p) {
+    AppExecutors.getInstance().diskIO().execute(() -> {
+        Preset d = pDatabase.pDao().getDefaultPreset();
+        d.setDefault(false);
+        pDatabase.pDao().updatePreset(p);
+        pDatabase.pDao().updatePreset(d);
+    });
+}
+
     public void deletePreset(Preset p) {
         AppExecutors.getInstance().diskIO().execute(() -> pDatabase.pDao().deletePreset(p));
     }
 
     public void retrieveCSVs(Spinner spinner) {
-        System.out.println("Retrieving csvs");
         AppExecutors.getInstance().diskIO().execute(() -> {
             List<String> csvs = csvDatabase.hapticsDao().loadAllCSVFileNames();
             ((MainActivityContainer)context).runOnUiThread(() -> {

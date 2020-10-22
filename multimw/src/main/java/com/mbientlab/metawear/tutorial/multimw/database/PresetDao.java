@@ -15,6 +15,9 @@ public interface PresetDao {
     @Query("SELECT * FROM presets")
     List<Preset> loadAllPresets();
 
+    @Query("Select * FROM presets WHERE isDefault")
+    Preset getDefaultPreset();
+
     @Query("SELECT name FROM presets")
     List<String> loadAllPresetNames();
 

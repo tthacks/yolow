@@ -44,15 +44,11 @@ public class PresetFragment extends Fragment {
         pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
         Button newPresetButton = view.findViewById(R.id.new_preset_button);
         newPresetButton.setOnClickListener(view1 -> {
-            // String name, boolean fromCSV, int csvFile, int numCycles, float on_time, float off_time, float accel_sample, float gyro_sample
-            Preset new_p = new Preset("Preset " + adapter.getItemCount(), false, -1, "",2, 1.0f, 1.0f, 50, 50);
+            Preset new_p = new Preset("Preset " + adapter.getItemCount(), false, -1, adapter.getItemCount() == 0, "",2, 1.0f, 1.0f, 50, 50);
             AppExecutors.getInstance().diskIO().execute(() -> {
                 pDatabase.pDao().insertPreset(new_p);
                 retrievePresets();
             });
-            if(adapter.getItemCount() == 1) {
-                MainActivityContainer.setDefaultIndex(0, new_p.getId(), new_p.getName());
-            }
         });
 
         upload_csv_button.setOnClickListener(v -> {

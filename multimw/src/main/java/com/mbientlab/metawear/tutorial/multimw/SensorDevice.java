@@ -20,7 +20,7 @@ public class SensorDevice {
         this.uidFileFriendly = uid.replace(":", "-");
         this.friendlyName = friendlyName;
         this.connecting = true;
-        this.preset_id = MainActivityContainer.getDefaultIndex();
+        this.preset_id = -1;
         this.presetName = "";
         this.x_loc = 0;
         this.y_loc = 0;

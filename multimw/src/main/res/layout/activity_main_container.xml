@@ -47,7 +47,7 @@
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/fragment_container"
-        android:layout_width="798dp"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toTopOf="@+id/scan_devices_button"
         app:layout_constraintEnd_toEndOf="parent"

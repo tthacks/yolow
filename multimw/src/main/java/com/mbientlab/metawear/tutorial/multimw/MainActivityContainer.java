@@ -12,7 +12,6 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
@@ -32,9 +31,6 @@ import java.util.Objects;
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     public static final int PICKFILE_REQUEST_CODE = 2;
-    private static int DEFAULT_INDEX = 0;
-    private static String DEFAULT_PRESET_NAME = "";
-    private static int DEFAULT_PRESET_ID = -1;
     private CSVDatabase csvDb;
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
@@ -55,8 +51,6 @@ public class MainActivityContainer extends AppCompatActivity {
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
         Button goto_exports_button = findViewById(R.id.button_goto_exports);
-//        Button scan_devices_button = findViewById(R.id.scan_devices_button);
-//        scan_devices_button.setOnClickListener(view -> startActivityForResult(new Intent(MainActivityContainer.this, ScannerActivity.class), REQUEST_START_BLE_SCAN));
 
         fm = getSupportFragmentManager();
         goto_human_button.setOnClickListener(view -> {
@@ -172,23 +166,23 @@ public class MainActivityContainer extends AppCompatActivity {
         deviceStates.put(s.getUid(), s);
     }
 
-    public static void setDefaultIndex(int x, int id, String s) {
-        DEFAULT_INDEX = x;
-        DEFAULT_PRESET_ID = id;
-        DEFAULT_PRESET_NAME = s;
-    }
-
-    public static int getDefaultIndex() {
-        return DEFAULT_INDEX;
-    }
-
-    public static int getDefaultPresetId() {
-        return DEFAULT_PRESET_ID;
-    }
-
-    public static String getDefaultPresetName() {
-        return DEFAULT_PRESET_NAME;
-    }
+//    public static void setDefaultIndex(int x, int id, String s) {
+//        DEFAULT_INDEX = x;
+//        DEFAULT_PRESET_ID = id;
+//        DEFAULT_PRESET_NAME = s;
+//    }
+//
+//    public static int getDefaultIndex() {
+//        return DEFAULT_INDEX;
+//    }
+//
+//    public static int getDefaultPresetId() {
+//        return DEFAULT_PRESET_ID;
+//    }
+//
+//    public static String getDefaultPresetName() {
+//        return DEFAULT_PRESET_NAME;
+//    }
 
     private void insertIntoCSVDb(HapticCSV h){
         AppExecutors.getInstance().diskIO().execute(() -> csvDb.hapticsDao().insertCSVFile(h));
