@@ -42,6 +42,7 @@ import com.mbientlab.metawear.data.AngularVelocity;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
+import com.mbientlab.metawear.module.Settings;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
@@ -142,8 +143,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             isLocked = !isLocked;
             if (isLocked) {
                 lock_button.setText(R.string.unlock);
+                presetSpinner.setEnabled(false);
+                sensorName.setEnabled(false);
+
             } else {
                 lock_button.setText(R.string.lock);
+                presetSpinner.setEnabled(true);
+                sensorName.setEnabled(true);
             }
         });
         record_button.setOnClickListener(v -> {
@@ -160,9 +166,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 boolean fileSuccessful = createSessionFiles(timestamp);
                 if(fileSuccessful) {
                     for (int x = 0; x < accelModules.size(); x++) {
+                        accelModules.get(x).packedAcceleration().start();
                         accelModules.get(x).start();
-                        accelModules.get(x).acceleration().start();
-                        gyroModules.get(x).angularVelocity().start();
+                        gyroModules.get(x).packedAngularVelocity().start();
                         gyroModules.get(x).start();
                     }
                 }
@@ -273,7 +279,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         catch (IOException e) {
             e.printStackTrace();
         }
-        tearDownBoards();
+        //tearDownBoards();
     }
 
     private void tearDownBoards() {
@@ -326,6 +332,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         );
 
         newBoard.connectAsync().onSuccessTask(task -> {
+            newBoard.getModule(Settings.class).editBleConnParams()
+                    .maxConnectionInterval(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? 11.25f : 7.5f)
+                    .commit();
             Accelerometer a = newBoard.getModule(Accelerometer.class);
             a.configure()
                     .odr(25f)
@@ -333,26 +342,27 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             accelModules.add(a);
             return a.acceleration().addRouteAsync(source ->
                     source.stream((data, env) -> {
-//                        try {
-//                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTime() + "," + LocalDateTime.now().toString() + "," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
+//                        Log.i("accel", newDeviceState.getUid() + " " + data.value(Acceleration.class));
+                        try {
+                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTime() + "," + LocalDateTime.now().toString() + "," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }));
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
                         .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
-                        .range(GyroBmi160.Range.FSR_2000)
                         .commit();
                 gyroModules.add(g);
             return g.angularVelocity().addRouteAsync(source ->
                     source.stream((data, env) -> {
-//                        try {
-//                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTime() + "," + LocalDateTime.now().toString() + "," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
+                        // Log.i("gyro", newDeviceState.getUid() + " " + data.value(AngularVelocity.class));
+                        try {
+                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTime() + "," + LocalDateTime.now().toString() + "," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }));
         }).continueWith((Continuation<Route, Void>) task -> {
             if(task.isFaulted()) {
@@ -383,8 +393,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 }
                 MetaWearBoard board = MainActivityContainer.getStateToBoards().get(s.getUid());
                 if(board != null) {
-                    //TODO: send haptics similtaneously to different sensors
-//                    sendHapticFromPreset(s, board);
                    sendHapticFromPreset(s, board);
                 }
             }

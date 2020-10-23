@@ -47,6 +47,7 @@ public class MainActivityContainer extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_container);
         csvDb = CSVDatabase.getInstance(this);
+
         //init button listeners
         Button goto_human_button = findViewById(R.id.button_goto_human);
         Button goto_settings_button = findViewById(R.id.button_goto_settings);
@@ -95,7 +96,6 @@ public class MainActivityContainer extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        System.out.println("requestCode: " + requestCode + " " + resultCode + " " + data.toString());
         if(requestCode == REQUEST_START_BLE_SCAN) {
             if(data != null) {
                 BluetoothDevice selectedDevice = data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
@@ -165,24 +165,6 @@ public class MainActivityContainer extends AppCompatActivity {
     public static void addDeviceToStates(SensorDevice s) {
         deviceStates.put(s.getUid(), s);
     }
-
-//    public static void setDefaultIndex(int x, int id, String s) {
-//        DEFAULT_INDEX = x;
-//        DEFAULT_PRESET_ID = id;
-//        DEFAULT_PRESET_NAME = s;
-//    }
-//
-//    public static int getDefaultIndex() {
-//        return DEFAULT_INDEX;
-//    }
-//
-//    public static int getDefaultPresetId() {
-//        return DEFAULT_PRESET_ID;
-//    }
-//
-//    public static String getDefaultPresetName() {
-//        return DEFAULT_PRESET_NAME;
-//    }
 
     private void insertIntoCSVDb(HapticCSV h){
         AppExecutors.getInstance().diskIO().execute(() -> csvDb.hapticsDao().insertCSVFile(h));
