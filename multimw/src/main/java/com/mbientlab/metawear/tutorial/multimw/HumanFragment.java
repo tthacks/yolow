@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.content.ClipData;
-import android.content.ClipDescription;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -29,7 +28,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -56,7 +54,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
 
 import bolts.Continuation;
 
@@ -205,7 +202,36 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void createPresetFiles(File dir) {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            final List<Preset> presetList = pDatabase.pDao().loadAllPresets();
+            getActivity().runOnUiThread(() -> {
+                try {
+                    for (int i = 0; i < presetList.size(); i++) {
+                        Preset p = presetList.get(i);
+                        File p_file = new File(dir, p.getName() + ".csv");
+                        if (!p_file.exists()) {
+                            p_file.createNewFile();
+                        }
+                        FileWriter p_fileWriter = new FileWriter(p_file);
+                        p_fileWriter.write("on,off,intensity\n");
+                        if (p.isFromCSV()) {
+                            writePresetFromCSV(p.getCsvFile(), p_fileWriter);
+                        } else { //not from CSV; create file
+                            for (int x = 0; x < p.getNumCycles(); x++) {
+                                p_fileWriter.write(p.getOn_time() + "," + p.getOff_time() + "," + p.getIntensity() + "\n");
+                            }
+                        }
+                        p_fileWriter.close();
+                    }
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+        });
+        });
+    }
+
     private boolean createSessionFiles(String timestamp) {
         String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
@@ -220,30 +246,27 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
         try {
             File haptics_file = new File(dir, timestamp + "_Haptic.csv");
-            if(!haptics_file.exists()) {
+            if (!haptics_file.exists()) {
                 haptics_file.createNewFile();
             }
             hapticWriter = new FileWriter(haptics_file);
             hapticWriter.write("Timestamp,Sensor Name,Preset\n");
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        List<SensorDevice> sensorDevices = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
-        for(int x = 0; x < sensorDevices.size(); x++) {
-            SensorDevice s = sensorDevices.get(x);
-            if(s == null) {
-                System.out.println("Sorry, something's gone wrong. Could not find the sensors.");
-                return false;
-            }
-            String sensorFileName = s.getFriendlyName() + "_" + timestamp + "_" + s.getUidFileFriendly();
-            try {
+            createPresetFiles(dir);
+
+            List<SensorDevice> sensorDevices = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
+            for (int x = 0; x < sensorDevices.size(); x++) {
+                SensorDevice s = sensorDevices.get(x);
+                if (s == null) {
+                    System.out.println("Sorry, something's gone wrong. Could not find the sensors.");
+                    return false;
+                }
+                String sensorFileName = s.getFriendlyName() + "_" + timestamp + "_" + s.getUidFileFriendly();
                 File newAccelFile = new File(dir, sensorFileName + "_Accelerometer.csv");
-                if(!newAccelFile.exists()) {
+                if (!newAccelFile.exists()) {
                     newAccelFile.createNewFile();
                 }
                 File newGyroFile = new File(dir, sensorFileName + "_Gyroscope.csv");
-                if(!newGyroFile.exists()) {
+                if (!newGyroFile.exists()) {
                     newGyroFile.createNewFile();
                 }
                 FileWriter accelWriter = new FileWriter(newAccelFile);
@@ -254,15 +277,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 accel_files.put(s.getUid(), accelWriter);
                 gyro_files.put(s.getUid(), gyroWriter);
             }
-            catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+            System.out.println("File creation failed.");
+            return false;
         }
         return true;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void closeSessionFiles() {
         List<FileWriter> accelFiles = new ArrayList<>(accel_files.values());
         List<FileWriter> gyroFiles = new ArrayList<>(gyro_files.values());
@@ -521,7 +544,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     else {
                         runnable = () -> {
                             for (int i = 0; i < p.getNumCycles(); i++) {
-                                board.getModule(Haptic.class).startMotor((short) (p.getOn_time() * 1000));
+                                board.getModule(Haptic.class).startMotor(p.getIntensity(), (short) (p.getOn_time() * 1000));
                                 try {
                                     Thread.sleep((long) (p.getOn_time() * 1000) + (long) (p.getOff_time() * 1000));
                                 } catch (InterruptedException e) {
@@ -540,8 +563,29 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             }); //end async
         }//end if
         else { //no sensor detected
-//            Toast.makeText(getActivity().getApplicationContext(), "No preset assigned to this sensor.", Toast.LENGTH_SHORT).show();
+            System.out.println("No preset connected to this sensor.");
         }
+    }
+
+    private void writePresetFromCSV(int fileId, FileWriter fileWriter) {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            final HapticCSV file = csvDb.hapticsDao().loadCSVFileById(fileId);
+            getActivity().runOnUiThread(() -> {
+                if(file != null) {
+                    String[] onTime = file.getOnTime().split(",");
+                    String[] offTime = file.getOffTime().split(",");
+                    String[] intensity = file.getIntensity().split(",");
+                    for (int i = 0; i < onTime.length; i++) {
+                        try {
+                            fileWriter.write(onTime[i] + "," + offTime[i] + "," + intensity[i] + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            break;
+                        }
+                    }
+                }
+            });
+        });
     }
 
     private void sendHapticFromCSV(int fileId, MetaWearBoard board) {
@@ -551,11 +595,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 if(file != null) {
                     String[] onTime = file.getOnTime().split(",");
                     String[] offTime = file.getOffTime().split(",");
+                    String[] intensity = file.getIntensity().split(",");
                     for (int i = 0; i < onTime.length; i++) {
                         try {
                             float on = Float.parseFloat(onTime[i]) * 1000;
                             float off = Float.parseFloat(offTime[i]) * 1000;
-                            board.getModule(Haptic.class).startMotor((short) on);
+                            float intens = Float.parseFloat(intensity[i]);
+                            board.getModule(Haptic.class).startMotor(intens, (short) on);
                             try {
                                 Thread.sleep((long) (on + off));
                             } catch (InterruptedException e) {
@@ -563,7 +609,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                             }
                         } catch (NumberFormatException e) {
                             e.printStackTrace();
-                            Toast.makeText(Objects.requireNonNull(getActivity()).getApplicationContext(), "The file could not be parsed.", Toast.LENGTH_SHORT).show();
+                            System.out.println("The file could not be parsed. File: " + file.getFilename());
                             break;
                         }
                     }

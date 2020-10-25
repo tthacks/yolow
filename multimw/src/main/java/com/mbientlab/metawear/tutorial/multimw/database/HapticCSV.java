@@ -11,11 +11,13 @@ public class HapticCSV {
     String filename;
     String onTime;
     String offTime;
+    String intensity;
 
-    public HapticCSV(@NonNull String filename, String onTime, String offTime) {
+    public HapticCSV(@NonNull String filename, String onTime, String offTime, String intensity) {
         this.filename = filename;
         this.onTime = onTime;
         this.offTime = offTime;
+        this.intensity = intensity;
     }
 
     public int getId() { return _id; }
@@ -31,5 +33,7 @@ public class HapticCSV {
     public String getOffTime() {
         return offTime;
     }
+
+    public String getIntensity() { return intensity; }
 
 }

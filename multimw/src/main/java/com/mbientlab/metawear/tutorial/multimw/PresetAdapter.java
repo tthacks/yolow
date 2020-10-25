@@ -133,7 +133,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     class SensorViewHolder extends RecyclerView.ViewHolder {
         TextView total_label, on_label, off_label, csv_text;
         Button delete_button;
-        EditText presetName, total_dur, on_dur, off_dur, accel_sample, gyro_sample;
+        EditText presetName, total_dur, on_dur, off_dur, accel_sample, gyro_sample, intensity;
         RadioButton radioCSV, customCSV;
         Switch set_default_switch;
         Spinner spinner;
@@ -149,6 +149,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             total_dur = itemView.findViewById(R.id.text_total_duration);
             on_dur = itemView.findViewById(R.id.text_on_duration);
             off_dur = itemView.findViewById(R.id.text_off_duration);
+            intensity = itemView.findViewById(R.id.text_intensity);
             radioCSV = itemView.findViewById(R.id.radio_csv);
             csv_text = itemView.findViewById(R.id.current_file_text);
             spinner = itemView.findViewById(R.id.csv_spinner);
@@ -162,7 +163,6 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 Preset p = pList.get(getAdapterPosition());
                 p.setDefault(true);
                 updateDefault(p);
-//                MainActivityContainer.setDefaultIndex(getAdapterPosition(), pList.get(getAdapterPosition()).getId(), pList.get(getAdapterPosition()).getName());
                 notifyDataSetChanged();
             });
 
@@ -197,20 +197,18 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             });
 
             delete_button.setOnClickListener(view -> {
+                boolean resetDefault = false;
+                Preset toDelete = pList.get(getAdapterPosition());
+                if(toDelete.isDefault()) {
+                    resetDefault = true;
+                }
                 deletePreset(pList.get(getAdapterPosition()));
                 pList.remove(getAdapterPosition());
-//                if(pList.size() == 0) {
-//                    MainActivityContainer.setDefaultIndex(-1, -1, "");
-//                }
-//                else if (MainActivityContainer.getDefaultIndex() == getAdapterPosition()) { //is the default - reset to first in list
-//                    MainActivityContainer.setDefaultIndex(0, pList.get(0).getId(), pList.get(0).getName());
-//                }
-//                else if(getAdapterPosition() < MainActivityContainer.getDefaultIndex()) {
-//                    int newIndex = MainActivityContainer.getDefaultIndex() - 1;
-//                       Preset p = pList.get(newIndex);
-//                       MainActivityContainer.setDefaultIndex(newIndex, p.getId(), p.getName());
-//                }
-//                notifyDataSetChanged();
+                if(resetDefault && pList.size() > 0) {
+                    Preset newDefault = pList.get(0);
+                    newDefault.setDefault(true);
+                    updatePreset(newDefault);
+                }
             });
 
             spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -275,6 +273,19 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                     Preset p = pList.get(getAdapterPosition());
                     try {
                         p.setOff_time(Float.parseFloat(s.toString()));
+                        updatePreset(p);
+                    } catch(NumberFormatException ignored) {}
+                }
+                public void beforeTextChanged(CharSequence s, int start,
+                                              int count, int after) {}
+                public void onTextChanged(CharSequence s, int start,
+                                          int before, int count) {}
+            });
+            intensity.addTextChangedListener(new TextWatcher() {
+                public void afterTextChanged(Editable s) {
+                    Preset p = pList.get(getAdapterPosition());
+                    try {
+                        p.setIntensity(Float.parseFloat(s.toString()));
                         updatePreset(p);
                     } catch(NumberFormatException ignored) {}
                 }

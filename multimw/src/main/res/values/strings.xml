@@ -24,4 +24,5 @@
     <string name="select_sensor">Select Sensor</string>
     <string name="delete_x">X</string>
     <string name="exports_header">Recorded Sessions</string>
+    <string name="intensity">Intensity (0-100)</string>
 </resources>

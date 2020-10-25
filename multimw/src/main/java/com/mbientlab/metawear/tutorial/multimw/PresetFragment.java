@@ -44,7 +44,7 @@ public class PresetFragment extends Fragment {
         pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
         Button newPresetButton = view.findViewById(R.id.new_preset_button);
         newPresetButton.setOnClickListener(view1 -> {
-            Preset new_p = new Preset("Preset " + adapter.getItemCount(), false, -1, adapter.getItemCount() == 0, "",2, 1.0f, 1.0f, 50, 50);
+            Preset new_p = new Preset("Preset " + adapter.getItemCount(), false, -1, adapter.getItemCount() == 0, "",2, 1.0f, 1.0f,  100f, 50, 50);
             AppExecutors.getInstance().diskIO().execute(() -> {
                 pDatabase.pDao().insertPreset(new_p);
                 retrievePresets();
