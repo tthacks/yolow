@@ -49,11 +49,10 @@ import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import com.mbientlab.metawear.tutorial.multimw.database.AppDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
-import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
-import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,8 +62,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
 
     private Context context;
     private List<Preset> pList;
-    private PresetDatabase pDatabase;
-    private CSVDatabase csvDatabase;
+    private AppDatabase database;
     private List<String> csvList;
 
     public PresetAdapter(Context context) {
@@ -75,8 +73,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     @Override
     public SensorViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(context).inflate(R.layout.sensor_preset, viewGroup, false);
-        pDatabase = PresetDatabase.getInstance(context);
-        csvDatabase = CSVDatabase.getInstance(context);
+        database = AppDatabase.getInstance(context);
         csvList = new ArrayList<>();
         return new SensorViewHolder(view);
     }
@@ -325,7 +322,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
 
     public void updateCSVFileInPreset(Preset p, String filename) {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            HapticCSV h = csvDatabase.hapticsDao().loadCSVFileByName(filename);
+            HapticCSV h = database.hDao().loadCSVFileByName(filename);
             ((MainActivityContainer)context).runOnUiThread(() -> {
                 if(h != null) {
                     p.setCsvFileName(h.getFilename());
@@ -337,25 +334,25 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     }
 
     public void updatePreset(Preset p) {
-            AppExecutors.getInstance().diskIO().execute(() -> pDatabase.pDao().updatePreset(p));
+            AppExecutors.getInstance().diskIO().execute(() -> database.pDao().updatePreset(p));
 }
 
 public void updateDefault(Preset p) {
     AppExecutors.getInstance().diskIO().execute(() -> {
-        Preset d = pDatabase.pDao().getDefaultPreset();
+        Preset d = database.pDao().getDefaultPreset();
         d.setDefault(false);
-        pDatabase.pDao().updatePreset(p);
-        pDatabase.pDao().updatePreset(d);
+        database.pDao().updatePreset(p);
+        database.pDao().updatePreset(d);
     });
 }
 
     public void deletePreset(Preset p) {
-        AppExecutors.getInstance().diskIO().execute(() -> pDatabase.pDao().deletePreset(p));
+        AppExecutors.getInstance().diskIO().execute(() -> database.pDao().deletePreset(p));
     }
 
     public void retrieveCSVs(Spinner spinner) {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            List<String> csvs = csvDatabase.hapticsDao().loadAllCSVFileNames();
+            List<String> csvs = database.hDao().loadAllCSVFileNames();
             ((MainActivityContainer)context).runOnUiThread(() -> {
                 csvList = csvs;
                 csvList.add(0, "");

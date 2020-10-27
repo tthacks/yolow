@@ -16,8 +16,8 @@ import android.widget.Toast;
 
 
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.tutorial.multimw.database.AppDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
-import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 
 import java.io.BufferedReader;
@@ -30,7 +30,7 @@ import java.util.Objects;
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     public static final int PICKFILE_REQUEST_CODE = 2;
-    private CSVDatabase csvDb;
+    private AppDatabase database;
     private static HashMap<String, MetaWearBoard> stateToBoards;
     private static HashMap<String, SensorDevice> deviceStates;
     private FragmentManager fm;
@@ -45,7 +45,7 @@ public class MainActivityContainer extends AppCompatActivity {
         //set view
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_container);
-        csvDb = CSVDatabase.getInstance(this);
+        database = AppDatabase.getInstance(this);
 
         //init button listeners
         Button goto_human_button = findViewById(R.id.button_goto_human);
@@ -173,7 +173,7 @@ public class MainActivityContainer extends AppCompatActivity {
     }
 
     private void insertIntoCSVDb(HapticCSV h){
-        AppExecutors.getInstance().diskIO().execute(() -> csvDb.hapticsDao().insertCSVFile(h));
+        AppExecutors.getInstance().diskIO().execute(() -> database.hDao().insertCSVFile(h));
     }
 }
 

@@ -38,9 +38,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.mbientlab.metawear.tutorial.multimw.database.Session;
 
@@ -67,6 +65,8 @@ public class ExportAdapter extends RecyclerView.Adapter<ExportAdapter.ExportView
     @Override
     public void onBindViewHolder(@NonNull ExportAdapter.ExportViewHolder viewHolder, @SuppressLint("RecyclerView") int i) {
         viewHolder.exportName.setText(sessionList.get(i).getName());
+        viewHolder.sensorPresetCount.setText(sessionList.get(i).getNumSensors() + " sensors, " + sessionList.get(i).getNumPresets() + " presets");
+        //viewHolder.sessionLength.setText(sessionList.get(i).getSessionLength());
     }
 
     @Override
@@ -83,16 +83,13 @@ public class ExportAdapter extends RecyclerView.Adapter<ExportAdapter.ExportView
     }
 
     class ExportViewHolder extends RecyclerView.ViewHolder {
-        TextView exportName;
-        Button download_export;
+        TextView exportName, sensorPresetCount, sessionLength;
 
         ExportViewHolder(@NonNull final View itemView) {
             super(itemView);
             exportName = itemView.findViewById(R.id.export_file_name);
-            download_export = itemView.findViewById(R.id.download_export);
-            download_export.setOnClickListener(view -> {
-                Toast.makeText(context, "Downloaded", Toast.LENGTH_LONG);
-            });
+            sensorPresetCount = itemView.findViewById(R.id.label_sensor_count);
+            sessionLength = itemView.findViewById(R.id.label_session_length);
         }
     }
 }

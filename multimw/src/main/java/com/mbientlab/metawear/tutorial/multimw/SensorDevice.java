@@ -72,28 +72,8 @@ public class SensorDevice {
         this.connecting = connecting;
     }
 
-    public float getX_loc() {
-        return x_loc;
-    }
-
-    public void setX_loc(float x_loc) {
-        this.x_loc = x_loc;
-    }
-
-    public float getY_loc() {
-        return y_loc;
-    }
-
-    public void setY_loc(float y_loc) {
-        this.y_loc = y_loc;
-    }
-
     public TextView getView() {
         return view;
-    }
-
-    public void setView(TextView view) {
-        this.view = view;
     }
 
 }

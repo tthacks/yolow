@@ -41,17 +41,20 @@ import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Settings;
+import com.mbientlab.metawear.tutorial.multimw.database.AppDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
-import com.mbientlab.metawear.tutorial.multimw.database.CSVDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
-import com.mbientlab.metawear.tutorial.multimw.database.PresetDatabase;
+import com.mbientlab.metawear.tutorial.multimw.database.Session;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.Time;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -62,8 +65,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     private static final int REQUEST_START_BLE_SCAN = 1;
     private BtleService.LocalBinder binder;
-    private PresetDatabase pDatabase;
-    private CSVDatabase csvDb;
+    private AppDatabase database;
     private boolean isLocked, isRecording;
     private List<String> presets;
     private TextView lastSelected = null;
@@ -72,6 +74,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private Spinner presetSpinner;
     private Preset defaultPreset;
     private String defaultPresetName = "";
+    private String currentSessionTimestamp = "";
     List<Accelerometer> accelModules = new ArrayList<>();
     List<GyroBmi160> gyroModules = new ArrayList<>();
     HashMap<String, FileWriter> gyro_files = new HashMap<>();
@@ -102,8 +105,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        pDatabase = PresetDatabase.getInstance(getActivity().getApplicationContext());
-        csvDb = CSVDatabase.getInstance(getActivity().getApplicationContext());
+        database = AppDatabase.getInstance(getActivity().getApplicationContext());
         fetchDefaultPreset();
         //button controls
         sensorSettingsBar = view.findViewById(R.id.sensor_data_layout);
@@ -119,7 +121,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 if(lastSelected != null) {
                     SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
                     AppExecutors.getInstance().diskIO().execute(() -> {
-                        final int preset_id = pDatabase.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
+                        final int preset_id = database.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
                         getActivity().runOnUiThread(() -> {
                             s.setPreset_id(preset_id);
                             s.setPresetName((String) adapterView.getItemAtPosition(i));
@@ -204,7 +206,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     private void createPresetFiles(File dir) {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            final List<Preset> presetList = pDatabase.pDao().loadAllPresets();
+            final List<Preset> presetList = database.pDao().loadAllPresets();
             getActivity().runOnUiThread(() -> {
                 try {
                     for (int i = 0; i < presetList.size(); i++) {
@@ -232,6 +234,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private boolean createSessionFiles(String timestamp) {
         String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
@@ -254,6 +257,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             createPresetFiles(dir);
 
             List<SensorDevice> sensorDevices = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
+            Session new_session = new Session(timestamp, sensorDevices.size(), presets.size());
+            currentSessionTimestamp = timestamp;
+            AppExecutors.getInstance().diskIO().execute(() -> {
+                database.sDao().insert(new_session);
+            });
             for (int x = 0; x < sensorDevices.size(); x++) {
                 SensorDevice s = sensorDevices.get(x);
                 if (s == null) {
@@ -286,6 +294,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return true;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void closeSessionFiles() {
         List<FileWriter> accelFiles = new ArrayList<>(accel_files.values());
         List<FileWriter> gyroFiles = new ArrayList<>(gyro_files.values());
@@ -497,7 +506,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     private void retrievePresets() {
         AppExecutors.getInstance().diskIO().execute(() -> {
-                final List<String> p_list = pDatabase.pDao().loadAllPresetNames();
+                final List<String> p_list = database.pDao().loadAllPresetNames();
                 getActivity().runOnUiThread(() -> {
                     presets = p_list;
                     ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(), android.R.layout.simple_spinner_item, presets);
@@ -509,7 +518,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     private void fetchDefaultPreset() {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            final Preset def = pDatabase.pDao().getDefaultPreset();
+            final Preset def = database.pDao().getDefaultPreset();
             getActivity().runOnUiThread(() -> {
                defaultPreset = def;
                if(def != null) {
@@ -525,7 +534,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         if(id > -1) {
             AppExecutors.getInstance().diskIO().execute(() -> {
                 s.getView().setBackgroundResource(R.color.sensorBoxVibrating);
-                Preset p = pDatabase.pDao().loadPresetFromId(id);
+                Preset p = database.pDao().loadPresetFromId(id);
                 if (p != null) {
                     System.out.println("Playing preset " + p.getName());
                     if(isRecording) {
@@ -569,7 +578,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     private void writePresetFromCSV(int fileId, FileWriter fileWriter) {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            final HapticCSV file = csvDb.hapticsDao().loadCSVFileById(fileId);
+            final HapticCSV file = database.hDao().loadCSVFileById(fileId);
             getActivity().runOnUiThread(() -> {
                 if(file != null) {
                     String[] onTime = file.getOnTime().split(",");
@@ -590,7 +599,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     private void sendHapticFromCSV(int fileId, MetaWearBoard board) {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            final HapticCSV file = csvDb.hapticsDao().loadCSVFileById(fileId);
+            final HapticCSV file = database.hDao().loadCSVFileById(fileId);
             getActivity().runOnUiThread(() -> {
                 if(file != null) {
                     String[] onTime = file.getOnTime().split(",");

@@ -1,12 +1,25 @@
 package com.mbientlab.metawear.tutorial.multimw.database;
 
-import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-//@Entity(tableName = "presets")
+import java.util.Date;
+
+@Entity(tableName = "sessions")
 public class Session {
+    @PrimaryKey (autoGenerate = true)
+    int _id;
     String name;
+    int numSensors;
+    int numPresets;
+
+    public int getNumSensors() {
+        return numSensors;
+    }
+
+    public int getNumPresets() {
+        return numPresets;
+    }
 
     public String getName() {
         return name;
@@ -16,19 +29,12 @@ public class Session {
         this.name = name;
     }
 
-    public long getLength() {
-        return length;
-    }
 
-    public void setLength(long length) {
-        this.length = length;
-    }
-
-    long length;
-
-    public Session(String name, long length) {
+    public Session(String name, int numSensors, int numPresets) {
         this.name = name;
-        this.length = length;
+        this.numSensors = numSensors;
+        this.numPresets = numPresets;
+
     }
 
 }

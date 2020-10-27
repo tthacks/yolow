@@ -8,11 +8,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.mbientlab.metawear.tutorial.multimw.database.AppDatabase;
 import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
+import com.mbientlab.metawear.tutorial.multimw.database.Session;
+
+import java.util.List;
 
 public class ExportFragment extends Fragment {
 
     private ExportAdapter adapter;
+    private AppDatabase database;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -27,11 +32,10 @@ public class ExportFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        //TODO: Known bug: recycler does not scroll when >4 items are in it
+        database = AppDatabase.getInstance(getActivity().getApplicationContext());
         RecyclerView recyclerView = view.findViewById(R.id.sessions);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
         recyclerView.setAdapter(adapter);
-
     }
 
     @Override
@@ -42,8 +46,8 @@ public class ExportFragment extends Fragment {
 
     private void retrieveSessions() {
         AppExecutors.getInstance().diskIO().execute(() -> {
-            //final List<Preset> presetList = pDatabase.pDao().loadAllPresets();
-            //getActivity().runOnUiThread(() -> adapter.setPresets(presetList));
+            final List<Session> sessionList = database.sDao().loadAllSessions();
+            getActivity().runOnUiThread(() -> adapter.setSessions(sessionList));
         });
     }
 }
