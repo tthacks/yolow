@@ -1,23 +1,35 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
+import android.content.Context;
+import android.widget.TextView;
+
 public class SensorDevice {
     private String uid;
+    private String uidFileFriendly;
     private String friendlyName;
     private String presetName;
     private boolean connecting;
     private int preset_id;
     private float x_loc;
     private float y_loc;
+    private TextView view;
 
-    public SensorDevice(String uid, String friendlyName) {
+    public SensorDevice(String uid, String friendlyName, Context context) {
 
         this.uid = uid;
+        this.uidFileFriendly = uid.replace(":", "-");
         this.friendlyName = friendlyName;
         this.connecting = true;
-        this.preset_id = MainActivityContainer.getDefaultIndex();
+        this.preset_id = -1;
         this.presetName = "";
         this.x_loc = 0;
         this.y_loc = 0;
+        this.view = new TextView(context);
+        this.view.setTag(uid);
+        this.view.setX(this.x_loc);
+        this.view.setY(this.y_loc);
+        this.view.setPadding(24, 16, 24, 16);
+        this.view.setTextSize(24);
     }
 
     public int getPreset_id() {
@@ -30,6 +42,10 @@ public class SensorDevice {
 
     public String getUid() {
         return uid;
+    }
+
+    public String getUidFileFriendly() {
+        return uidFileFriendly;
     }
 
     public String getFriendlyName() {
@@ -56,20 +72,8 @@ public class SensorDevice {
         this.connecting = connecting;
     }
 
-    public float getX_loc() {
-        return x_loc;
-    }
-
-    public void setX_loc(float x_loc) {
-        this.x_loc = x_loc;
-    }
-
-    public float getY_loc() {
-        return y_loc;
-    }
-
-    public void setY_loc(float y_loc) {
-        this.y_loc = y_loc;
+    public TextView getView() {
+        return view;
     }
 
 }

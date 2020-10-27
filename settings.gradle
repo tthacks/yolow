@@ -29,4 +29,4 @@
  * contact MbientLab Inc, at www.mbientlab.com.
  */
 
-include ':multimw', ':sensorfusion', ':starter', ':freefall'
+include ':multimw'

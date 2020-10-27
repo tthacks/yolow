@@ -29,11 +29,11 @@
   ~ contact MbientLab Inc, at www.mbientlab.com.
   -->
 
-<fragment android:id="@+id/main_activity_content"
-          android:name="com.mbientlab.metawear.tutorial.multimw.HumanFragment"
-          xmlns:android="http://schemas.android.com/apk/res/android"
-          xmlns:app="http://schemas.android.com/apk/res-auto"
-          xmlns:tools="http://schemas.android.com/tools"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          tools:layout="@layout/fragment_human"/>
+<fragment xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_activity_content"
+    android:name="com.mbientlab.metawear.tutorial.multimw.HumanFragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:layout="@layout/fragment_human" />
