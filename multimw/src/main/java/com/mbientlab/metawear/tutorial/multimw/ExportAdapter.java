@@ -83,13 +83,12 @@ public class ExportAdapter extends RecyclerView.Adapter<ExportAdapter.ExportView
     }
 
     class ExportViewHolder extends RecyclerView.ViewHolder {
-        TextView exportName, sensorPresetCount, sessionLength;
+        TextView exportName, sensorPresetCount;
 
         ExportViewHolder(@NonNull final View itemView) {
             super(itemView);
             exportName = itemView.findViewById(R.id.export_file_name);
             sensorPresetCount = itemView.findViewById(R.id.label_sensor_count);
-            sessionLength = itemView.findViewById(R.id.label_session_length);
         }
     }
 }

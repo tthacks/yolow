@@ -14,16 +14,16 @@
         android:layout_marginBottom="64dp"
         android:background="@color/white"
         android:scrollbars="vertical"
-        app:layout_constraintBottom_toTopOf="@+id/new_preset_button"
+        app:layout_constraintBottom_toTopOf="@+id/preset_csv_bar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
     </android.support.v7.widget.RecyclerView>
 
     <LinearLayout
-        android:id="@+id/lock_record_bar"
+        android:id="@+id/preset_csv_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="130dp"
         android:background="@color/white"
         android:padding="@dimen/appbar_padding"
         app:layout_constraintBottom_toBottomOf="parent"

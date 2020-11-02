@@ -87,6 +87,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         presetViewHolder.off_dur.setText("" + pList.get(i).getOff_time());
         presetViewHolder.gyro_sample.setText("" + pList.get(i).getGyro_sample());
         presetViewHolder.accel_sample.setText("" + pList.get(i).getAccel_sample());
+        presetViewHolder.intensity.setText("" + pList.get(i).getIntensity());
         presetViewHolder.set_default_switch.setChecked(pList.get(i).isDefault());
         presetViewHolder.customCSV.setChecked(!pList.get(i).isFromCSV());
         presetViewHolder.csv_text.setText(pList.get(i).getCsvFileName());
@@ -99,6 +100,8 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             presetViewHolder.total_label.setVisibility(View.INVISIBLE);
             presetViewHolder.on_label.setVisibility(View.INVISIBLE);
             presetViewHolder.off_label.setVisibility(View.INVISIBLE);
+            presetViewHolder.intensity.setVisibility(View.INVISIBLE);
+            presetViewHolder.intens_label.setVisibility(View.INVISIBLE);
             presetViewHolder.spinner.setVisibility(View.VISIBLE);
         }
         else {
@@ -107,9 +110,11 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             presetViewHolder.total_dur.setVisibility(View.VISIBLE);
             presetViewHolder.on_dur.setVisibility(View.VISIBLE);
             presetViewHolder.off_dur.setVisibility(View.VISIBLE);
+            presetViewHolder.intensity.setVisibility(View.VISIBLE);
             presetViewHolder.total_label.setVisibility(View.VISIBLE);
             presetViewHolder.on_label.setVisibility(View.VISIBLE);
             presetViewHolder.off_label.setVisibility(View.VISIBLE);
+            presetViewHolder.intens_label.setVisibility(View.VISIBLE);
             presetViewHolder.spinner.setVisibility(View.INVISIBLE);
         }
     }
@@ -128,7 +133,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     }
 
     class SensorViewHolder extends RecyclerView.ViewHolder {
-        TextView total_label, on_label, off_label, csv_text;
+        TextView total_label, on_label, off_label, csv_text, intens_label;
         Button delete_button;
         EditText presetName, total_dur, on_dur, off_dur, accel_sample, gyro_sample, intensity;
         RadioButton radioCSV, customCSV;
@@ -146,6 +151,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             total_dur = itemView.findViewById(R.id.text_total_duration);
             on_dur = itemView.findViewById(R.id.text_on_duration);
             off_dur = itemView.findViewById(R.id.text_off_duration);
+            intens_label = itemView.findViewById(R.id.label_intensity);
             intensity = itemView.findViewById(R.id.text_intensity);
             radioCSV = itemView.findViewById(R.id.radio_csv);
             csv_text = itemView.findViewById(R.id.current_file_text);
@@ -158,9 +164,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
 
             set_default_switch.setOnClickListener(view -> {
                 Preset p = pList.get(getAdapterPosition());
-                p.setDefault(true);
                 updateDefault(p);
-                notifyDataSetChanged();
             });
 
             radioCSV.setOnClickListener(view -> {
@@ -172,6 +176,8 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 total_label.setVisibility(View.INVISIBLE);
                 on_label.setVisibility(View.INVISIBLE);
                 off_label.setVisibility(View.INVISIBLE);
+                intensity.setVisibility(View.INVISIBLE);
+                intens_label.setVisibility(View.INVISIBLE);
                 spinner.setVisibility(View.VISIBLE);
                 Preset p = pList.get(getAdapterPosition());
                 p.setFromCSV(true);
@@ -184,6 +190,8 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 total_dur.setVisibility(View.VISIBLE);
                 on_dur.setVisibility(View.VISIBLE);
                 off_dur.setVisibility(View.VISIBLE);
+                intensity.setVisibility(View.VISIBLE);
+                intens_label.setVisibility(View.VISIBLE);
                 total_label.setVisibility(View.VISIBLE);
                 on_label.setVisibility(View.VISIBLE);
                 off_label.setVisibility(View.VISIBLE);
@@ -199,13 +207,14 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 if(toDelete.isDefault()) {
                     resetDefault = true;
                 }
-                deletePreset(pList.get(getAdapterPosition()));
-                pList.remove(getAdapterPosition());
+                deletePreset(toDelete);
+                pList.remove(toDelete);
                 if(resetDefault && pList.size() > 0) {
                     Preset newDefault = pList.get(0);
                     newDefault.setDefault(true);
                     updatePreset(newDefault);
                 }
+                notifyDataSetChanged();
             });
 
             spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -341,6 +350,7 @@ public void updateDefault(Preset p) {
     AppExecutors.getInstance().diskIO().execute(() -> {
         Preset d = database.pDao().getDefaultPreset();
         d.setDefault(false);
+        p.setDefault(true);
         database.pDao().updatePreset(p);
         database.pDao().updatePreset(d);
     });

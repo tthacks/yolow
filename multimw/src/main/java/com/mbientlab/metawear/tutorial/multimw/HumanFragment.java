@@ -28,6 +28,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -54,6 +55,7 @@ import java.sql.Time;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -219,12 +221,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                         p_fileWriter.write("on,off,intensity\n");
                         if (p.isFromCSV()) {
                             writePresetFromCSV(p.getCsvFile(), p_fileWriter);
-                        } else { //not from CSV; create file
+                        } else {
                             for (int x = 0; x < p.getNumCycles(); x++) {
                                 p_fileWriter.write(p.getOn_time() + "," + p.getOff_time() + "," + p.getIntensity() + "\n");
                             }
+                            p_fileWriter.close();
                         }
-                        p_fileWriter.close();
                     }
                 }
                 catch (IOException e) {
@@ -236,6 +238,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private boolean createSessionFiles(String timestamp) {
+
+        if(presets.size() == 0) {
+            Toast.makeText(getActivity().getApplicationContext(), "There are no presets. You will need to create some in order to start recording.", Toast.LENGTH_LONG);
+            return false;
+        }
+
         String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
             //If it isn't mounted - we can't write into it.
@@ -248,7 +256,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         }
 
         try {
-            File haptics_file = new File(dir, timestamp + "_Haptic.csv");
+            File haptics_file = new File(dir, timestamp + "_haptic.csv");
             if (!haptics_file.exists()) {
                 haptics_file.createNewFile();
             }
@@ -269,19 +277,19 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     return false;
                 }
                 String sensorFileName = s.getFriendlyName() + "_" + timestamp + "_" + s.getUidFileFriendly();
-                File newAccelFile = new File(dir, sensorFileName + "_Accelerometer.csv");
+                File newAccelFile = new File(dir, sensorFileName + "_accelerometer.csv");
                 if (!newAccelFile.exists()) {
                     newAccelFile.createNewFile();
                 }
-                File newGyroFile = new File(dir, sensorFileName + "_Gyroscope.csv");
+                File newGyroFile = new File(dir, sensorFileName + "_gyroscope.csv");
                 if (!newGyroFile.exists()) {
                     newGyroFile.createNewFile();
                 }
                 FileWriter accelWriter = new FileWriter(newAccelFile);
                 FileWriter gyroWriter = new FileWriter(newGyroFile);
                 //headers
-                accelWriter.write("sensor timestamp,x,y,z\n");
-                gyroWriter.write("sensor timestamp,x,y,z\n");
+                accelWriter.write("epoc (ms),x-axis (g),y-axis (g),z-axis (g)\n");
+                gyroWriter.write("epoc (ms),x-axis (deg/s),y-axis (deg/s),z-axis (deg/s)\n");
                 accel_files.put(s.getUid(), accelWriter);
                 gyro_files.put(s.getUid(), gyroWriter);
             }
@@ -376,7 +384,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     source.stream((data, env) -> {
 //                        Log.i("accel", newDeviceState.getUid() + " " + data.value(Acceleration.class));
                         try {
-                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTime() + "," + LocalDateTime.now().toString() + "," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -391,7 +399,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     source.stream((data, env) -> {
                         // Log.i("gyro", newDeviceState.getUid() + " " + data.value(AngularVelocity.class));
                         try {
-                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTime() + "," + LocalDateTime.now().toString() + "," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
+                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis()+ "," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -507,6 +515,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private void retrievePresets() {
         AppExecutors.getInstance().diskIO().execute(() -> {
                 final List<String> p_list = database.pDao().loadAllPresetNames();
+                fetchDefaultPreset();
                 getActivity().runOnUiThread(() -> {
                     presets = p_list;
                     ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(), android.R.layout.simple_spinner_item, presets);
@@ -533,13 +542,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         int id = s.getPreset_id();
         if(id > -1) {
             AppExecutors.getInstance().diskIO().execute(() -> {
-                s.getView().setBackgroundResource(R.color.sensorBoxVibrating);
-                Preset p = database.pDao().loadPresetFromId(id);
+                Preset p_id = database.pDao().loadPresetFromId(id);
+                Preset p = p_id == null ? defaultPreset : p_id;
+
                 if (p != null) {
+                    HapticCSV file = database.hDao().loadCSVFileById(p.getCsvFile());
                     System.out.println("Playing preset " + p.getName());
                     if(isRecording) {
                         try {
-                            hapticWriter.append(LocalDateTime.now().toString() + "," + s.getFriendlyName() + "," + p.getName() + "\n");
+                            hapticWriter.append( Calendar.getInstance().getTimeInMillis() + "," + s.getFriendlyName() + "," + p.getName() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -547,11 +558,14 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     Runnable runnable;
                     if(p.isFromCSV()) {
                         runnable = () -> {
-                            sendHapticFromCSV(p.getCsvFile(), board);
+                            s.getView().setBackgroundResource(R.color.sensorBoxVibrating);
+                            sendHapticFromCSV(file, board);
+                            s.getView().setBackgroundResource(R.color.sensorBoxConnected);
                         };
                     }
                     else {
                         runnable = () -> {
+                            s.getView().setBackgroundResource(R.color.sensorBoxVibrating);
                             for (int i = 0; i < p.getNumCycles(); i++) {
                                 board.getModule(Haptic.class).startMotor(p.getIntensity(), (short) (p.getOn_time() * 1000));
                                 try {
@@ -560,6 +574,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                                     e.printStackTrace();
                                 }
                             } //end for
+                            s.getView().setBackgroundResource(R.color.sensorBoxConnected);
                         };//end runnable
                     }
                     Thread thread = new Thread(runnable);
@@ -568,7 +583,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 else {
                     System.out.println("No preset found. Id: " + id);
                 }
-                s.getView().setBackgroundResource(R.color.sensorBoxConnected);
             }); //end async
         }//end if
         else { //no sensor detected
@@ -580,7 +594,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         AppExecutors.getInstance().diskIO().execute(() -> {
             final HapticCSV file = database.hDao().loadCSVFileById(fileId);
             getActivity().runOnUiThread(() -> {
-                if(file != null) {
+                if (file != null) {
                     String[] onTime = file.getOnTime().split(",");
                     String[] offTime = file.getOffTime().split(",");
                     String[] intensity = file.getIntensity().split(",");
@@ -589,18 +603,21 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                             fileWriter.write(onTime[i] + "," + offTime[i] + "," + intensity[i] + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
+                           Log.i("WritePresetFromCSV", "The file could not be parsed. File: " + file.getFilename());
                             break;
                         }
                     }
+                }
+                try {
+                    fileWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             });
         });
     }
 
-    private void sendHapticFromCSV(int fileId, MetaWearBoard board) {
-        AppExecutors.getInstance().diskIO().execute(() -> {
-            final HapticCSV file = database.hDao().loadCSVFileById(fileId);
-            getActivity().runOnUiThread(() -> {
+    private void sendHapticFromCSV(HapticCSV file, MetaWearBoard board) {
                 if(file != null) {
                     String[] onTime = file.getOnTime().split(",");
                     String[] offTime = file.getOffTime().split(",");
@@ -626,8 +643,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 else {
                     System.out.println("The file could not be found.");
                 }
-            });
-        });
     }
 
 }

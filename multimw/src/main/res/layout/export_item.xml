@@ -5,36 +5,22 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:longClickable="true"
+    android:orientation="vertical"
     android:padding="16dp">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/export_file_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_weight="5"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/export_file_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="5"
-            android:text="Data File"
-            android:textSize="24sp" />
-
-        <TextView
-            android:id="@+id/label_sensor_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="5"
-            android:text="0 sensors, 0 presets" />
-
-    </LinearLayout>
+        android:text="Data File"
+        android:textSize="24sp" />
 
     <TextView
-        android:id="@+id/label_session_length"
+        android:id="@+id/label_sensor_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="Length:" />
+        android:layout_weight="5"
+        android:text="0 sensors, 0 presets" />
 
 </LinearLayout>
