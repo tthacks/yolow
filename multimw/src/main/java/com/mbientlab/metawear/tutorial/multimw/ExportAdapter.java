@@ -42,6 +42,8 @@ import android.widget.TextView;
 
 import com.mbientlab.metawear.tutorial.multimw.database.Session;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -66,7 +68,6 @@ public class ExportAdapter extends RecyclerView.Adapter<ExportAdapter.ExportView
     public void onBindViewHolder(@NonNull ExportAdapter.ExportViewHolder viewHolder, @SuppressLint("RecyclerView") int i) {
         viewHolder.exportName.setText(sessionList.get(i).getName());
         viewHolder.sensorPresetCount.setText(sessionList.get(i).getNumSensors() + " sensors, " + sessionList.get(i).getNumPresets() + " presets");
-        //viewHolder.sessionLength.setText(sessionList.get(i).getSessionLength());
     }
 
     @Override
@@ -79,6 +80,7 @@ public class ExportAdapter extends RecyclerView.Adapter<ExportAdapter.ExportView
 
     public void setSessions(List<Session> s_list) {
         sessionList = s_list;
+        Collections.reverse(sessionList);
         notifyDataSetChanged();
     }
 

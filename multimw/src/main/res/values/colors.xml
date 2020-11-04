@@ -9,6 +9,7 @@
     <color name="sensorBoxConnecting">#90A4AE</color>
     <color name="sensorBoxConnected">#81D3FA</color>
     <color name="sensorBoxVibrating">#E91E63</color>
+    <color name="sensorBoxCriteriaMet">#098765</color>
     <color name="sensorBoxDisconnected">#212121</color>
     <color name="white">#FFFFFF</color>
 </resources>

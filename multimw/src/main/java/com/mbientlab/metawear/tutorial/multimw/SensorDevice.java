@@ -1,6 +1,7 @@
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.content.Context;
+import android.view.View;
 import android.widget.TextView;
 
 public class SensorDevice {
@@ -9,6 +10,7 @@ public class SensorDevice {
     private String friendlyName;
     private String presetName;
     private boolean connecting;
+    private boolean hapticLocked;
     private int preset_id;
     private float x_loc;
     private float y_loc;
@@ -18,6 +20,7 @@ public class SensorDevice {
 
         this.uid = uid;
         this.uidFileFriendly = uid.replace(":", "-");
+        this.hapticLocked = false;
         this.friendlyName = friendlyName;
         this.connecting = true;
         this.preset_id = -1;
@@ -30,6 +33,7 @@ public class SensorDevice {
         this.view.setY(this.y_loc);
         this.view.setPadding(24, 16, 24, 16);
         this.view.setTextSize(24);
+        this.view.setVisibility(View.VISIBLE);
     }
 
     public int getPreset_id() {
@@ -74,6 +78,14 @@ public class SensorDevice {
 
     public TextView getView() {
         return view;
+    }
+
+    public void lockHaptic(boolean lockState) {
+        hapticLocked = lockState;
+    }
+
+    public boolean isHapticLocked() {
+        return hapticLocked;
     }
 
 }
