@@ -35,6 +35,7 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.DataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
@@ -90,6 +91,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     List<GyroBmi160> gyroModules = new ArrayList<>();
     HashMap<String, FileWriter> gyro_files = new HashMap<>();
     HashMap<String, FileWriter> accel_files = new HashMap<>();
+    HashMap<String, Data> prevAccelData = new HashMap<>();
+    HashMap<String, Data> prevGyroData = new HashMap<>();
     FileWriter hapticWriter;
 
     @Override
@@ -165,8 +168,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         record_button.setOnClickListener(v -> {
             if (!isRecording) {
                 LocalDateTime now = LocalDateTime.now();
-                //Time format (removing forbidden chars such as :)
-                String timestamp = now.getYear() + "-" + now.getMonthValue() + "-" + now.getDayOfMonth() + "_" + now.getHour() + "-" + now.getMinute() + "-" + now.getSecond();
+                String timestamp = now.toString().replaceAll(":", ".");
                 boolean fileSuccessful = createSessionFiles(timestamp);
                 if(fileSuccessful) {
                     for (int x = 0; x < accelModules.size(); x++) {
@@ -254,6 +256,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
         if(presets.size() == 0) {
             Log.i("CreateSessionFiles", "There are no presets. You will need to create some to record data.");
+            Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "There are no presets. You will need to create some to record data.", Snackbar.LENGTH_SHORT).show();
             return false;
         }
         String state = Environment.getExternalStorageState();
@@ -286,6 +289,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 SensorDevice s = sensorDevices.get(x);
                 if (s == null) {
                     Log.i("Create Session Files", "Sorry, something's gone wrong. Could not find the sensors.");
+                    Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Sorry, something's gone wrong. Could not find the sensors.", Snackbar.LENGTH_SHORT).show();
                     return false;
                 }
                 String sensorFileName = s.getFriendlyName() + "_" + timestamp + "_" + s.getUidFileFriendly();
@@ -395,49 +399,37 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     .commit();
             accelModules.add(a);
             return a.packedAcceleration().addRouteAsync(source ->
-                    source.multicast()
-                        .to().stream((data, env) -> Log.i("accel", newDeviceState.getUid() + " " + data.value(Acceleration.class)))
-                        .to().map(Function1.RSS).lowpass((byte) 4).filter(ThresholdOutput.BINARY, 0.5f).filter(Comparison.EQ, -1).stream(((data, env) -> sendHapticFromPreset(newDeviceState, newBoard, false)))
-                    .end());
-//                            source.map(Function1.RSS).lowpass((byte) 4).filter(ThresholdOutput.BINARY, 0.5f)
-//                                .multicast()
-//                                .to().filter(Comparison.EQ, -1).stream((data, env) -> sendHapticFromPreset(newDeviceState, newBoard))
-//                                .to().filter(Comparison.EQ, 1).stream((data, env) -> Log.i("accel", data.formattedTimestamp() + ": Left Free Fall"))
-//                                .end());
-//                    source.stream((data, env) -> {
-//                        Log.i("accel", newDeviceState.getUid() + " " + data.value(Acceleration.class));
-//                        try {
-//                            //TODO: add elapsed time
-//                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                    }));
+                    source.stream((data, env) -> {
+                        compareAccelToPrevious(newDeviceState.getUid(), data);
+                        try {
+                            //TODO: add elapsed time
+                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }));
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
                         .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
                         .commit();
                 gyroModules.add(g);
-            return g.packedAngularVelocity().addRouteAsync(source -> {
-                source.multicast()
-                        .to().stream((data, env) -> Log.i("gyro", newDeviceState.getUid() + " " + data.value(AngularVelocity.class)))
-                        .end();
-//                    source.stream((data, env) -> {
-//                         Log.i("gyro", newDeviceState.getUid() + " " + data.value(AngularVelocity.class));
-////                        try {
-////                            //TODO: add elapsed time
-////                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis()+ "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
-////                        } catch (IOException e) {
-////                            e.printStackTrace();
-////                        }
-//                    });
-            });
+            return g.packedAngularVelocity().addRouteAsync(source ->
+                    source.stream((data, ev) -> {
+                        compareGyroToPrevious(newDeviceState.getUid(), data);
+                        try {
+                            //TODO: add elapsed time
+                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }));
         }).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
                 Log.w("yolow", "Failed to configure app", task.getError());
                 if (!newBoard.isConnected()) {
                     getActivity().runOnUiThread(() -> {
+                        Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                         MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid());
                         MainActivityContainer.getStateToBoards().remove(newDeviceState.getUid());
                         newDeviceState.getView().setVisibility(View.GONE);
@@ -459,6 +451,44 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             }
             return null;
         });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void compareAccelToPrevious(String uid, Data data) {
+        Data prev = prevAccelData.get(uid);
+        if(prev == null) {
+            //this is the first data point
+            prevAccelData.put(uid, data);
+            return;
+        }
+        double x  =Math.pow(prev.value(Acceleration.class).x() - data.value(Acceleration.class).x(), 2);
+        double y = Math.pow(prev.value(Acceleration.class).y() - data.value(Acceleration.class).y(), 2);
+        double z = Math.pow(prev.value(Acceleration.class).z() - data.value(Acceleration.class).z(), 2);
+        double resultant = Math.sqrt(x + y + z);
+        Log.i("Accel resultant" , "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
+        if(resultant > 2) {
+            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
+        }
+        prevAccelData.replace(uid, data);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void compareGyroToPrevious(String uid, Data data) {
+//        Data prev = prevGyroData.get(uid);
+//        if(prev == null) {
+//            //this is the first data point
+//            prevGyroData.put(uid, data);
+//            return;
+//        }
+//        double x  =Math.pow(prev.value(AngularVelocity.class).x() - data.value(AngularVelocity.class).x(), 2);
+//        double y = Math.pow(prev.value(AngularVelocity.class).y() - data.value(AngularVelocity.class).y(), 2);
+//        double z = Math.pow(prev.value(AngularVelocity.class).z() - data.value(AngularVelocity.class).z(), 2);
+//        double resultant = Math.sqrt(x + y + z);
+//        Log.i("Gyro resultant" , "" + prev.value(AngularVelocity.class) + ", " + data.value(AngularVelocity.class) + ": " + resultant);
+//        if(resultant > 2) {
+//            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
+//        }
+//        prevGyroData.replace(uid, data);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
