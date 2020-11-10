@@ -42,7 +42,7 @@
             android:layout_weight="1"
             android:background="@color/colorPrimary"
             android:padding="4dp"
-            android:text="EXPORT SESSIONS" />
+            android:text="@string/session_log" />
     </LinearLayout>
 
     <android.support.constraint.ConstraintLayout

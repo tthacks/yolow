@@ -79,6 +79,7 @@ import bolts.Continuation;
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
     private static final int REQUEST_START_BLE_SCAN = 1;
+    private static boolean streamStarted = false;
     private BtleService.LocalBinder binder;
     private AppDatabase database;
     private boolean isLocked, isRecording;
@@ -137,13 +138,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 if(lastSelected != null) {
                     SensorDevice s = MainActivityContainer.getDeviceStates().get(lastSelected.getTag().toString());
-                    AppExecutors.getInstance().diskIO().execute(() -> {
-                        final int preset_id = database.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
-                        getActivity().runOnUiThread(() -> {
-                            s.setPreset_id(preset_id);
-                            s.setPresetName((String) adapterView.getItemAtPosition(i));
+                    if (s != null) {
+                        AppExecutors.getInstance().diskIO().execute(() -> {
+                            final int preset_id = database.pDao().getIdFromPresetName((String) adapterView.getItemAtPosition(i));
+                            getActivity().runOnUiThread(() -> {
+                                s.setPreset_id(preset_id);
+                                s.setPresetName((String) adapterView.getItemAtPosition(i));
+                            });
                         });
-                    });
+                    }
                 }
             }
             @Override
@@ -204,7 +207,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     gyroModules.get(x).stop();
                 }
                 closeSessionFiles();
-           //  tearDownBoards();
+                //  tearDownBoards();
             }
         });
 
@@ -332,8 +335,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             hapticWriter.flush();
             hapticWriter.close();
             for (int x = 0; x < accelFiles.size(); x++) {
-//                accelFiles.get(x).flush();
-//                gyroFiles.get(x).flush();
                 accelFiles.get(x).close();
                 gyroFiles.get(x).close();
             }
@@ -344,6 +345,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         catch (IOException e) {
             e.printStackTrace();
         }
+        streamStarted = false;
+        Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Stream successfully saved.", Snackbar.LENGTH_SHORT).show();
         //tearDownBoards();
     }
 
@@ -403,7 +406,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     .commit();
             Accelerometer a = newBoard.getModule(Accelerometer.class);
             a.configure()
-                    .odr(25f)
+                    .odr(25)
                     .range(4f)
                     .commit();
             accelModules.add(a);
@@ -416,11 +419,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                                 a.stop();
                                 Log.i("FileWriter", "Target file was null. If you just connected your sensor, this message can be ignored.");
                             }
-//                            MessageFormat fmt = new MessageFormat("{0},{1},,{2},{3},{4}\n");
-//                            Object values[] = {data.timestamp().getTimeInMillis(), data.formattedTimestamp(), data.value(Acceleration.class).x(), data.value(Acceleration.class).y(), data.value(Acceleration.class).z()};
-//                            accel_files.get(newDeviceState.getUid()).write(fmt.format(values));
                             accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
-//                            accel_files.get(newDeviceState.getUid()).flush();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -433,18 +432,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 gyroModules.add(g);
             return g.packedAngularVelocity().addRouteAsync(source ->
                     source.stream((data, ev) -> {
-                        compareGyroToPrevious(newDeviceState.getUid(), data);
+                        //compareGyroToPrevious(newDeviceState.getUid(), data);
                         try {
                             if(gyro_files.get(newDeviceState.getUid()) == null) {
                                 g.packedAngularVelocity().stop();
                                 g.stop();
                                 Log.i("FileWriter", "Target file was null. If you just connected your sensor, this message can be ignored.");
                             }
-//                            MessageFormat fmt = new MessageFormat("{0},{1},,{2},{3},{4}\n");
-//                            Object values[] = {data.timestamp().getTimeInMillis(), data.formattedTimestamp(), data.value(AngularVelocity.class).x(), data.value(AngularVelocity.class).y(), data.value(AngularVelocity.class).z()};
-//                            gyro_files.get(newDeviceState.getUid()).write(fmt.format(values));
+                            startStream();
                             gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
-//                            gyro_files.get(newDeviceState.getUid()).flush();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -566,8 +562,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 return true;
             }
             else if(event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
-                float x = event.getX() - lastSelected.getWidth() / 2;
-                float y = event.getY() - 300;
+                if(event.getX() == 0.0 && event.getY() == 0) {
+                    return true;
+                }
+                float x = event.getX() + 20 - lastSelected.getWidth() / 2;
+                float y = event.getY() - 280;
                 if(y < 0) {
                     y = 0;
                 }
@@ -747,6 +746,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 else {
                     System.out.println("The file could not be found.");
                 }
+    }
+
+    synchronized void startStream() {
+        if(!streamStarted && isRecording) {
+            Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Streaming successfully started.", Snackbar.LENGTH_SHORT).show();
+            streamStarted = true;
+        }
     }
 
 }
