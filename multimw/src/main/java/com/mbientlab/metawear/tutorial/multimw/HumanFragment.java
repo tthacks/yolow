@@ -79,6 +79,7 @@ import bolts.Continuation;
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
     private static final int REQUEST_START_BLE_SCAN = 1;
+    private static final boolean VERBOSE = false;
     private static boolean streamStarted = false;
     private BtleService.LocalBinder binder;
     private AppDatabase database;
@@ -419,7 +420,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                                 a.stop();
                                 Log.i("FileWriter", "Target file was null. If you just connected your sensor, this message can be ignored.");
                             }
-                            accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+                           accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -486,7 +487,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         double y = Math.pow(prev.value(Acceleration.class).y() - data.value(Acceleration.class).y(), 2);
         double z = Math.pow(prev.value(Acceleration.class).z() - data.value(Acceleration.class).z(), 2);
         double resultant = Math.sqrt(x + y + z);
-        Log.i("Accel resultant" , "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
+        if(VERBOSE) {
+            Log.i("Accel resultant", "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
+        }
         if(resultant > 2) {
             sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
         }
