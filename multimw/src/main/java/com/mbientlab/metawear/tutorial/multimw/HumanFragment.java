@@ -12,7 +12,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
-import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
@@ -30,25 +29,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-import com.mbientlab.metawear.Data;
-import com.mbientlab.metawear.DataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.RouteBuilder;
-import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.builder.filter.Comparison;
-import com.mbientlab.metawear.builder.filter.ThresholdOutput;
 import com.mbientlab.metawear.builder.function.Function1;
 import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.AngularVelocity;
 import com.mbientlab.metawear.module.Accelerometer;
-import com.mbientlab.metawear.module.DataProcessor;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Settings;
@@ -58,23 +50,15 @@ import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.Session;
 
-import org.apache.commons.collections4.queue.CircularFifoQueue;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.Array;
-import java.sql.Time;
-import java.text.MessageFormat;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Queue;
 
 import bolts.Continuation;
 
@@ -415,7 +399,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         newBoard.connectAsync().onSuccessTask(task -> {
             Accelerometer a = newBoard.getModule(Accelerometer.class);
             a.configure()
-                    .odr(25)
+                    .odr(100)
                     .range(4f)
                     .commit();
             accelModules.add(a);
@@ -433,7 +417,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
-                        .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
+                        .odr(GyroBmi160.OutputDataRate.ODR_100_HZ)
                         .commit();
                 gyroModules.add(g);
             return g.packedAngularVelocity().addRouteAsync(source ->
@@ -496,26 +480,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 //            runningAvg = runningAvg - val;
 //        }
 //        runningAvgs.replace(uid, runningAvg);
-//    }
-
-//    private void compareAccelToPrevious(String uid, Data data) {
-//        Data prev = prevAccelData.get(uid);
-//        if(prev == null) {
-//            //this is the first data point
-//            prevAccelData.put(uid, data);
-//            return;
-//        }
-//        double x  =Math.pow(prev.value(Acceleration.class).x() - data.value(Acceleration.class).x(), 2);
-//        double y = Math.pow(prev.value(Acceleration.class).y() - data.value(Acceleration.class).y(), 2);
-//        double z = Math.pow(prev.value(Acceleration.class).z() - data.value(Acceleration.class).z(), 2);
-//        double resultant = Math.sqrt(x + y + z);
-//        if(VERBOSE) {
-//            Log.i("Accel resultant", "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
-//        }
-//        if(resultant > 2) {
-//            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
-//        }
-//        prevAccelData.replace(uid, data);
 //    }
 
     @RequiresApi(api = Build.VERSION_CODES.O)

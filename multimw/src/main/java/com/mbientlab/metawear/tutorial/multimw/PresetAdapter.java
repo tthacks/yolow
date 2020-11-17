@@ -33,6 +33,8 @@ package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -85,8 +87,8 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         presetViewHolder.total_dur.setText("" + pList.get(i).getNumCycles());
         presetViewHolder.on_dur.setText("" + pList.get(i).getOn_time());
         presetViewHolder.off_dur.setText("" + pList.get(i).getOff_time());
-        presetViewHolder.gyro_sample.setText("" + pList.get(i).getGyro_sample());
-        presetViewHolder.accel_sample.setText("" + pList.get(i).getAccel_sample());
+//        presetViewHolder.gyro_sample.setText("" + pList.get(i).getGyro_sample());
+//        presetViewHolder.accel_sample.setText("" + pList.get(i).getAccel_sample());
         presetViewHolder.intensity.setText("" + pList.get(i).getIntensity());
         presetViewHolder.set_default_switch.setChecked(pList.get(i).isDefault());
         presetViewHolder.customCSV.setChecked(!pList.get(i).isFromCSV());
@@ -94,14 +96,14 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         presetViewHolder.radioCSV.setChecked(pList.get(i).isFromCSV());
         presetViewHolder.spinner.setSelection(0);
         if(pList.get(i).isFromCSV()) {
-            presetViewHolder.total_dur.setVisibility(View.INVISIBLE);
-            presetViewHolder.on_dur.setVisibility(View.INVISIBLE);
-            presetViewHolder.off_dur.setVisibility(View.INVISIBLE);
-            presetViewHolder.total_label.setVisibility(View.INVISIBLE);
-            presetViewHolder.on_label.setVisibility(View.INVISIBLE);
-            presetViewHolder.off_label.setVisibility(View.INVISIBLE);
-            presetViewHolder.intensity.setVisibility(View.INVISIBLE);
-            presetViewHolder.intens_label.setVisibility(View.INVISIBLE);
+            presetViewHolder.total_dur.setVisibility(View.GONE);
+            presetViewHolder.on_dur.setVisibility(View.GONE);
+            presetViewHolder.off_dur.setVisibility(View.GONE);
+            presetViewHolder.total_label.setVisibility(View.GONE);
+            presetViewHolder.on_label.setVisibility(View.GONE);
+            presetViewHolder.off_label.setVisibility(View.GONE);
+            presetViewHolder.intensity.setVisibility(View.GONE);
+            presetViewHolder.intens_label.setVisibility(View.GONE);
             presetViewHolder.spinner.setVisibility(View.VISIBLE);
         }
         else {
@@ -115,7 +117,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             presetViewHolder.on_label.setVisibility(View.VISIBLE);
             presetViewHolder.off_label.setVisibility(View.VISIBLE);
             presetViewHolder.intens_label.setVisibility(View.VISIBLE);
-            presetViewHolder.spinner.setVisibility(View.INVISIBLE);
+            presetViewHolder.spinner.setVisibility(View.GONE);
         }
     }
 
@@ -158,8 +160,8 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             spinner = itemView.findViewById(R.id.csv_spinner);
             retrieveCSVs(spinner);
 
-            accel_sample = itemView.findViewById(R.id.text_sample_accel);
-            gyro_sample = itemView.findViewById(R.id.text_sample_gyro);
+//            accel_sample = itemView.findViewById(R.id.text_sample_accel);
+//            gyro_sample = itemView.findViewById(R.id.text_sample_gyro);
             set_default_switch = itemView.findViewById(R.id.set_default_switch);
 
             set_default_switch.setOnClickListener(view -> {
@@ -170,14 +172,14 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             radioCSV.setOnClickListener(view -> {
                 radioCSV.setChecked(true);
                 customCSV.setChecked(false);
-                total_dur.setVisibility(View.INVISIBLE);
-                on_dur.setVisibility(View.INVISIBLE);
-                off_dur.setVisibility(View.INVISIBLE);
-                total_label.setVisibility(View.INVISIBLE);
-                on_label.setVisibility(View.INVISIBLE);
-                off_label.setVisibility(View.INVISIBLE);
-                intensity.setVisibility(View.INVISIBLE);
-                intens_label.setVisibility(View.INVISIBLE);
+                total_dur.setVisibility(View.GONE);
+                on_dur.setVisibility(View.GONE);
+                off_dur.setVisibility(View.GONE);
+                total_label.setVisibility(View.GONE);
+                on_label.setVisibility(View.GONE);
+                off_label.setVisibility(View.GONE);
+                intensity.setVisibility(View.GONE);
+                intens_label.setVisibility(View.GONE);
                 spinner.setVisibility(View.VISIBLE);
                 Preset p = pList.get(getAdapterPosition());
                 p.setFromCSV(true);
@@ -300,32 +302,32 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 public void onTextChanged(CharSequence s, int start,
                                           int before, int count) {}
             });
-            accel_sample.addTextChangedListener(new TextWatcher() {
-                public void afterTextChanged(Editable s) {
-                    Preset p = pList.get(getAdapterPosition());
-                    try {
-                        p.setAccel_sample(Float.parseFloat(s.toString()));
-                        updatePreset(p);
-                    } catch(NumberFormatException ignored) {}
-                }
-                public void beforeTextChanged(CharSequence s, int start,
-                                              int count, int after) {}
-                public void onTextChanged(CharSequence s, int start,
-                                          int before, int count) {}
-            });
-            gyro_sample.addTextChangedListener(new TextWatcher() {
-                public void afterTextChanged(Editable s) {
-                    Preset p = pList.get(getAdapterPosition());
-                    try {
-                        p.setGyro_sample(Float.parseFloat(s.toString()));
-                        updatePreset(p);
-                    } catch(NumberFormatException ignored) {}
-                }
-                public void beforeTextChanged(CharSequence s, int start,
-                                              int count, int after) {}
-                public void onTextChanged(CharSequence s, int start,
-                                          int before, int count) {}
-            });
+//            accel_sample.addTextChangedListener(new TextWatcher() {
+//                public void afterTextChanged(Editable s) {
+//                    Preset p = pList.get(getAdapterPosition());
+//                    try {
+//                        p.setAccel_sample(Float.parseFloat(s.toString()));
+//                        updatePreset(p);
+//                    } catch(NumberFormatException ignored) {}
+//                }
+//                public void beforeTextChanged(CharSequence s, int start,
+//                                              int count, int after) {}
+//                public void onTextChanged(CharSequence s, int start,
+//                                          int before, int count) {}
+//            });
+//            gyro_sample.addTextChangedListener(new TextWatcher() {
+//                public void afterTextChanged(Editable s) {
+//                    Preset p = pList.get(getAdapterPosition());
+//                    try {
+//                        p.setGyro_sample(Float.parseFloat(s.toString()));
+//                        updatePreset(p);
+//                    } catch(NumberFormatException ignored) {}
+//                }
+//                public void beforeTextChanged(CharSequence s, int start,
+//                                              int count, int after) {}
+//                public void onTextChanged(CharSequence s, int start,
+//                                          int before, int count) {}
+//            });
         }
     }
 

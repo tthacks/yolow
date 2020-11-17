@@ -30,10 +30,10 @@
             android:layout_weight="1"
             android:background="@color/colorAccentShy"
             android:ems="10"
-            android:inputType="textPersonName"
-            android:padding="8dp"
             android:hint="@string/name"
-            android:importantForAutofill="no" />
+            android:importantForAutofill="no"
+            android:inputType="textPersonName"
+            android:padding="8dp" />
 
         <Spinner
             android:id="@+id/sensor_preset_select"
@@ -48,16 +48,18 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/sensor_area"
         android:layout_width="match_parent"
-        android:layout_height="1050dp"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/lock_record_bar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/sensor_data_layout"
-        app:layout_constraintBottom_toTopOf="@id/lock_record_bar">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/sensor_data_layout">
+
         <ImageView
             android:id="@+id/human_outline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:adjustViewBounds="true"
+            android:fitsSystemWindows="true"
             android:scaleType="fitCenter"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -71,9 +73,8 @@
     <LinearLayout
         android:id="@+id/lock_record_bar"
         android:layout_width="match_parent"
-        android:layout_height="130dp"
+        android:layout_height="0dp"
         android:background="@color/white"
-        android:padding="@dimen/appbar_padding"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -83,20 +84,16 @@
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
             android:layout_weight="1"
             android:background="@color/colorAccent"
             android:padding="4dp"
-            android:text="@string/scan_devices"
-            />
+            android:text="@string/scan_devices" />
+
         <Button
             android:id="@+id/button_lock"
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
             android:layout_weight="1"
             android:background="@color/colorPrimaryDark"
             android:padding="4dp"
@@ -107,8 +104,6 @@
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
             android:layout_weight="1"
             android:background="@color/colorAccent2"
             android:padding="4dp"

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/sensor_status_layout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -18,9 +20,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="10"
             android:ems="10"
+            android:importantForAutofill="no"
             android:inputType="textPersonName"
-            android:textSize="24sp"
-            android:importantForAutofill="no" />
+            android:textSize="24sp" />
 
         <Button
             android:id="@+id/delete_preset_button"
@@ -33,131 +35,160 @@
 
     </LinearLayout>
 
-    <RadioGroup
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal">
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/radioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/radio_custom"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/custom"
+            app:layout_constraintEnd_toStartOf="@+id/radio_csv"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:layout_conversion_absoluteHeight="32dp"
+            tools:layout_conversion_absoluteWidth="82dp" />
+
+        <RadioButton
+            android:id="@+id/radio_csv"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/from_csv"
+            app:layout_constraintEnd_toStartOf="@+id/set_default_switch"
+            app:layout_constraintStart_toEndOf="@+id/radio_custom"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:layout_conversion_absoluteHeight="32dp"
+            tools:layout_conversion_absoluteWidth="96dp" />
+
+        <Switch
+            android:id="@+id/set_default_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:checked="true"
+            android:text="@string/set_default"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/radio_csv"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/custom_length_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_marginStart="16dp"
+            android:orientation="vertical"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
-                android:id="@+id/custom_length_layout"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:orientation="vertical">
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal">
 
-                <RadioButton
-                    android:id="@+id/radio_custom"
-                    android:layout_width="wrap_content"
+                <TextView
+                    android:id="@+id/label_total_duration"
+                    android:layout_width="120dp"
                     android:layout_height="wrap_content"
-                    android:checked="true"
-                    android:text="Custom" />
+                    android:text="@string/num_cycles" />
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <EditText
+                    android:id="@+id/text_total_duration"
+                    android:layout_width="72dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="horizontal">
+                    android:ems="10"
+                    android:inputType="number" />
+            </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/label_total_duration"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:text="@string/num_cycles" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-                    <EditText
-                        android:id="@+id/text_total_duration"
-                        android:layout_width="72dp"
-                        android:layout_height="wrap_content"
-                        android:ems="10"
-                        android:inputType="number" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <TextView
+                    android:id="@+id/label_on_duration"
+                    android:layout_width="120dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:text="@string/duration_on" />
 
-                    <TextView
-                        android:id="@+id/label_on_duration"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:text="@string/duration_on" />
-
-                    <EditText
-                        android:id="@+id/text_on_duration"
-                        android:layout_width="72dp"
-                        android:layout_height="wrap_content"
-
-                        android:ems="10"
-                        android:inputType="numberDecimal" />
-
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <EditText
+                    android:id="@+id/text_on_duration"
+                    android:layout_width="72dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/label_off_duration"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:text="@string/duration_off" />
+                    android:ems="10"
+                    android:inputType="numberDecimal" />
 
-                    <EditText
-                        android:id="@+id/text_off_duration"
-                        android:layout_width="72dp"
-                        android:layout_height="wrap_content"
-                        android:ems="10"
-                        android:inputType="numberDecimal" />
+            </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <TextView
+                    android:id="@+id/label_off_duration"
+                    android:layout_width="120dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:text="@string/duration_off" />
 
-                    <TextView
-                        android:id="@+id/label_intensity"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"
-                        android:text="@string/intensity" />
-
-                    <EditText
-                        android:id="@+id/text_intensity"
-                        android:layout_width="72dp"
-                        android:layout_height="wrap_content"
-                        android:ems="10"
-                        android:inputType="numberDecimal" />
-
-
-                </LinearLayout>
+                <EditText
+                    android:id="@+id/text_off_duration"
+                    android:layout_width="72dp"
+                    android:layout_height="wrap_content"
+                    android:ems="10"
+                    android:inputType="numberDecimal" />
 
 
             </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/label_intensity"
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/intensity" />
+
+                <EditText
+                    android:id="@+id/text_intensity"
+                    android:layout_width="72dp"
+                    android:layout_height="wrap_content"
+                    android:ems="10"
+                    android:inputType="numberDecimal" />
+
+
+            </LinearLayout>
+
+
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/csv_length_layout"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_weight="1.3"
-            android:orientation="vertical">
-
-            <RadioButton
-                android:id="@+id/radio_csv"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/from_csv" />
+            android:layout_height="0dp"
+            android:orientation="vertical"
+            app:layout_constraintStart_toEndOf="@+id/custom_length_layout"
+            app:layout_constraintTop_toTopOf="parent">
 
             <TextView
                 android:id="@+id/current_file_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minWidth="200dp"
                 android:padding="8dp"
                 android:text="@string/no_current_file" />
 
@@ -166,75 +197,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:dropDownSelector="@color/colorAccent2"
+                android:minWidth="80dp"
                 android:minHeight="24dp"
                 android:padding="8dp" />
 
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/sample_layout"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:orientation="vertical">
-
-            <Switch
-                android:id="@+id/set_default_switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:checked="true"
-                android:text="@string/set_default" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/label_sample_accel"
-                    android:layout_width="120dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/accel_sample" />
-
-                <EditText
-                    android:id="@+id/text_sample_accel"
-                    android:layout_width="72dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:ems="10"
-                    android:inputType="numberDecimal" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/label_sample_gyro"
-                    android:layout_width="120dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/gyro_sample" />
-
-                <EditText
-                    android:id="@+id/text_sample_gyro"
-                    android:layout_width="72dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:ems="10"
-                    android:inputType="numberDecimal" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-    </RadioGroup>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </LinearLayout>

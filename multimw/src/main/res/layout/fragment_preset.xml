@@ -23,9 +23,8 @@
     <LinearLayout
         android:id="@+id/preset_csv_bar"
         android:layout_width="match_parent"
-        android:layout_height="130dp"
+        android:layout_height="0dp"
         android:background="@color/white"
-        android:padding="@dimen/appbar_padding"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -35,11 +34,8 @@
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
             android:layout_weight="1"
             android:background="@color/colorAccent"
-            android:padding="4dp"
             android:text="@string/new_preset" />
 
         <Button
@@ -47,11 +43,8 @@
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
             android:layout_weight="1"
             android:background="@color/colorPrimaryDark"
-            android:padding="4dp"
             android:text="@string/upload_csv" />
 
     </LinearLayout>
