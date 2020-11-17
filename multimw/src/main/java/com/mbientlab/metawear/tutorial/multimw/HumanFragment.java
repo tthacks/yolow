@@ -58,6 +58,8 @@ import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.Session;
 
+import org.apache.commons.collections4.queue.CircularFifoQueue;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -72,6 +74,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Queue;
 
 import bolts.Continuation;
 
@@ -79,7 +82,8 @@ import bolts.Continuation;
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
     private static final int REQUEST_START_BLE_SCAN = 1;
-    private static final boolean VERBOSE = false;
+    private static final int MOVING_AVERAGE = 50;
+    private static final boolean VERBOSE = true;
     private static boolean streamStarted = false;
     private BtleService.LocalBinder binder;
     private AppDatabase database;
@@ -96,8 +100,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     List<FileWriter> fileWriters = new ArrayList<>();
     HashMap<String, BufferedWriter> gyro_files = new HashMap<>();
     HashMap<String, BufferedWriter> accel_files = new HashMap<>();
-    HashMap<String, Data> prevAccelData = new HashMap<>();
-    HashMap<String, Data> prevGyroData = new HashMap<>();
     FileWriter hapticWriter;
 
     @Override
@@ -192,7 +194,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     scan_devices_button.setEnabled(false);
                 }
                 else {
-                    Log.i("CreateSessionFiles", "could not start the session.");
+                    if(VERBOSE) {
+                        Log.i("CreateSessionFiles", "could not start the session.");
+                    }
                 }
             } else {
                 isRecording = false;
@@ -262,7 +266,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private boolean createSessionFiles(String timestamp) {
 
         if(presets.size() == 0) {
-            Log.i("CreateSessionFiles", "There are no presets. You will need to create some to record data.");
+            if(VERBOSE) {
+                Log.i("CreateSessionFiles", "There are no presets. You will need to create some to record data.");
+            }
             Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "There are no presets. You will need to create some to record data.", Snackbar.LENGTH_SHORT).show();
             return false;
         }
@@ -294,7 +300,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             for (int x = 0; x < sensorDevices.size(); x++) {
                 SensorDevice s = sensorDevices.get(x);
                 if (s == null) {
-                    Log.i("Create Session Files", "Sorry, something's gone wrong. Could not find the sensors.");
+                    if(VERBOSE) {
+                        Log.i("Create Session Files", "Sorry, something's gone wrong. Could not find the sensors.");
+                    }
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Sorry, something's gone wrong. Could not find the sensors.", Snackbar.LENGTH_SHORT).show();
                     return false;
                 }
@@ -316,13 +324,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 gyroWriter.write("epoc (ms),timestamp (-0700),elapsed (s),x-axis (deg/s),y-axis (deg/s),z-axis (deg/s)\n");
                 accel_files.put(s.getUid(), accelWriter);
                 gyro_files.put(s.getUid(), gyroWriter);
+                s.setAccel_writer(accelWriter);
+                s.setGyro_writer(gyroWriter);
+                MainActivityContainer.getDeviceStates().replace(s.getUid(), s);
                 fileWriters.add(fw);
                 fileWriters.add(fw2);
             }
         }
         catch(IOException e) {
             e.printStackTrace();
-            System.out.println("File creation failed.");
             return false;
         }
         return true;
@@ -348,7 +358,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         }
         streamStarted = false;
         Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Stream successfully saved.", Snackbar.LENGTH_SHORT).show();
-        //tearDownBoards();
     }
 
     private void tearDownBoards() {
@@ -394,7 +403,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
             MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid());
-            Log.w("ADDNEWDEVICE", "Lost connection with sensor " + newDeviceState.getFriendlyName() + " (Id: " + newDeviceState.getUid() + ")");
+            if(VERBOSE) {
+                Log.w("ADDNEWDEVICE", "Lost connection with sensor " + newDeviceState.getFriendlyName() + " (Id: " + newDeviceState.getUid() + ")");
+            }
             newDeviceState.getView().setBackgroundResource(R.color.sensorBoxDisconnected);
             newDeviceState.getView().setTextColor(getResources().getColor(R.color.white));
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Lost connection with sensor " + newDeviceState.getFriendlyName() + "(Id: " + newDeviceState.getUid() + ")", Snackbar.LENGTH_LONG).show();
@@ -402,9 +413,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         );
 
         newBoard.connectAsync().onSuccessTask(task -> {
-            newBoard.getModule(Settings.class).editBleConnParams()
-                    .maxConnectionInterval(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? 11.25f : 7.5f)
-                    .commit();
             Accelerometer a = newBoard.getModule(Accelerometer.class);
             a.configure()
                     .odr(25)
@@ -412,19 +420,16 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     .commit();
             accelModules.add(a);
             return a.packedAcceleration().addRouteAsync(source ->
-                    source.stream((data, env) -> {
-                        compareAccelToPrevious(newDeviceState.getUid(), data);
+                    source.multicast()
+                    .to().map(Function1.RMS).lowpass((byte) MOVING_AVERAGE).filter(Comparison.GTE, 1).stream((data, env) -> sendHapticFromPreset(newDeviceState, newBoard, false))
+                    .to().stream((data, env) -> {
                         try {
-                            if(accel_files.get(newDeviceState.getUid()) == null) {
-                                a.packedAcceleration().stop();
-                                a.stop();
-                                Log.i("FileWriter", "Target file was null. If you just connected your sensor, this message can be ignored.");
-                            }
-                           accel_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+                            newDeviceState.getAccel_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-                    }));
+                    })
+                    .end());
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
                 g.configure()
@@ -433,22 +438,17 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 gyroModules.add(g);
             return g.packedAngularVelocity().addRouteAsync(source ->
                     source.stream((data, ev) -> {
-                        //compareGyroToPrevious(newDeviceState.getUid(), data);
                         try {
-                            if(gyro_files.get(newDeviceState.getUid()) == null) {
-                                g.packedAngularVelocity().stop();
-                                g.stop();
-                                Log.i("FileWriter", "Target file was null. If you just connected your sensor, this message can be ignored.");
-                            }
-                            startStream();
-                            gyro_files.get(newDeviceState.getUid()).write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
+                            newDeviceState.getGyro_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }));
         }).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
-                Log.w("yolow", "Failed to configure app", task.getError());
+                if(VERBOSE) {
+                    Log.w("yolow", "Failed to configure app", task.getError());
+                }
                 if (!newBoard.isConnected()) {
                     getActivity().runOnUiThread(() -> {
                         Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
@@ -470,50 +470,53 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             else {
                 newDeviceState.setConnecting(false);
                 newDeviceState.getView().setBackgroundResource(R.color.sensorBoxConnected);
+                newBoard.getModule(Settings.class).editBleConnParams()
+                        .maxConnectionInterval(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? 11.25f : 7.5f)
+                        .commit();
             }
             return null;
         });
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private void compareAccelToPrevious(String uid, Data data) {
-        Data prev = prevAccelData.get(uid);
-        if(prev == null) {
-            //this is the first data point
-            prevAccelData.put(uid, data);
-            return;
-        }
-        double x  =Math.pow(prev.value(Acceleration.class).x() - data.value(Acceleration.class).x(), 2);
-        double y = Math.pow(prev.value(Acceleration.class).y() - data.value(Acceleration.class).y(), 2);
-        double z = Math.pow(prev.value(Acceleration.class).z() - data.value(Acceleration.class).z(), 2);
-        double resultant = Math.sqrt(x + y + z);
-        if(VERBOSE) {
-            Log.i("Accel resultant", "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
-        }
-        if(resultant > 2) {
-            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
-        }
-        prevAccelData.replace(uid, data);
-    }
+//    @RequiresApi(api = Build.VERSION_CODES.O)
+//    private void computeMovingAvg(String uid, Data data, Queue<Double> queue) {
+//        double runningAvg = runningAvgs.get(uid);
+//        double newVal = Math.sqrt(Math.pow(data.value(Acceleration.class).x(), 2) + Math.pow(data.value(Acceleration.class).y(), 2) + Math.pow(data.value(Acceleration.class).z(), 2));
+//        queue.add(newVal);
+//        runningAvg += newVal;
+//        if (queue.size() == MOVING_AVERAGE) {
+//            double moving_avg = runningAvg / MOVING_AVERAGE;
+//            if(VERBOSE) {
+//                Log.i("Moving average", "" + moving_avg);
+//            }
+//            if(moving_avg > 2) {
+//            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
+//            }
+//            double val = queue.remove();
+//            runningAvg = runningAvg - val;
+//        }
+//        runningAvgs.replace(uid, runningAvg);
+//    }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private void compareGyroToPrevious(String uid, Data data) {
-//        Data prev = prevGyroData.get(uid);
+//    private void compareAccelToPrevious(String uid, Data data) {
+//        Data prev = prevAccelData.get(uid);
 //        if(prev == null) {
 //            //this is the first data point
-//            prevGyroData.put(uid, data);
+//            prevAccelData.put(uid, data);
 //            return;
 //        }
-//        double x  =Math.pow(prev.value(AngularVelocity.class).x() - data.value(AngularVelocity.class).x(), 2);
-//        double y = Math.pow(prev.value(AngularVelocity.class).y() - data.value(AngularVelocity.class).y(), 2);
-//        double z = Math.pow(prev.value(AngularVelocity.class).z() - data.value(AngularVelocity.class).z(), 2);
+//        double x  =Math.pow(prev.value(Acceleration.class).x() - data.value(Acceleration.class).x(), 2);
+//        double y = Math.pow(prev.value(Acceleration.class).y() - data.value(Acceleration.class).y(), 2);
+//        double z = Math.pow(prev.value(Acceleration.class).z() - data.value(Acceleration.class).z(), 2);
 //        double resultant = Math.sqrt(x + y + z);
-//        Log.i("Gyro resultant" , "" + prev.value(AngularVelocity.class) + ", " + data.value(AngularVelocity.class) + ": " + resultant);
+//        if(VERBOSE) {
+//            Log.i("Accel resultant", "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
+//        }
 //        if(resultant > 2) {
 //            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
 //        }
-//        prevGyroData.replace(uid, data);
-    }
+//        prevAccelData.replace(uid, data);
+//    }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ClickableViewAccessibility")
@@ -688,13 +691,16 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     thread.start();
                 }
                 else {
-                    Log.i("sendHapticFromPreset", "Invalid preset. Was it deleted?");
+                    if(VERBOSE) {
+                        Log.i("sendHapticFromPreset", "Invalid preset. Was it deleted?");
+                    }
                 }
             }); //end async
         }//end if
         else { //no sensor detected
-            Log.i("sendHapticFromPReset", "No sensor found.");
-//            toastError("No preset found for this sensor.");
+            if(VERBOSE) {
+                Log.i("sendHapticFromPReset", "No sensor found.");
+            }
         }
     }
 
@@ -710,7 +716,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                             fileWriter.write(onTime[i] + "," + offTime[i] + "," + intensity[i] + "\n");
                         } catch (IOException e) {
                             e.printStackTrace();
-                           Log.i("WritePresetFromCSV", "The file could not be parsed. File: " + file.getFilename());
+                            if(VERBOSE) {
+                                Log.i("WritePresetFromCSV", "The file could not be parsed. File: " + file.getFilename());
+                            }
                             break;
                         }
                     }

@@ -4,11 +4,15 @@ import android.content.Context;
 import android.view.View;
 import android.widget.TextView;
 
+import java.io.BufferedWriter;
+
 public class SensorDevice {
     private String uid;
     private String uidFileFriendly;
     private String friendlyName;
     private String presetName;
+    private BufferedWriter accel_writer;
+    private BufferedWriter gyro_writer;
     private boolean connecting;
     private boolean hapticLocked;
     private int preset_id;
@@ -27,6 +31,8 @@ public class SensorDevice {
         this.presetName = "";
         this.x_loc = 0;
         this.y_loc = 0;
+        this.accel_writer = null;
+        this.gyro_writer = null;
         this.view = new TextView(context);
         this.view.setTag(uid);
         this.view.setX(this.x_loc);
@@ -86,6 +92,23 @@ public class SensorDevice {
 
     public boolean isHapticLocked() {
         return hapticLocked;
+    }
+
+
+    public BufferedWriter getAccel_writer() {
+        return accel_writer;
+    }
+
+    public void setAccel_writer(BufferedWriter accel_writer) {
+        this.accel_writer = accel_writer;
+    }
+
+    public BufferedWriter getGyro_writer() {
+        return gyro_writer;
+    }
+
+    public void setGyro_writer(BufferedWriter gyro_writer) {
+        this.gyro_writer = gyro_writer;
     }
 
 }
