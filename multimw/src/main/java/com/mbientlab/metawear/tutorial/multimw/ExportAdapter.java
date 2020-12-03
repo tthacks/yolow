@@ -42,7 +42,6 @@ import android.widget.TextView;
 
 import com.mbientlab.metawear.tutorial.multimw.database.Session;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 

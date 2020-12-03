@@ -1,40 +1,7 @@
-/*
- * Copyright 2015 MbientLab Inc. All rights reserved.
- *
- * IMPORTANT: Your use of this Software is limited to those specific rights
- * granted under the terms of a software license agreement between the user who
- * downloaded the software, his/her employer (which must be your employer) and
- * MbientLab Inc, (the "License").  You may not use this Software unless you
- * agree to abide by the terms of the License which can be found at
- * www.mbientlab.com/terms . The License limits your use, and you acknowledge,
- * that the  Software may not be modified, copied or distributed and can be used
- * solely and exclusively in conjunction with a MbientLab Inc, product.  Other
- * than for the foregoing purpose, you may not use, reproduce, copy, prepare
- * derivative works of, modify, distribute, perform, display or sell this
- * Software and/or its documentation for any purpose.
- *
- * YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
- * PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
- * NON-INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
- * MBIENTLAB OR ITS LICENSORS BE LIABLE OR OBLIGATED UNDER CONTRACT, NEGLIGENCE,
- * STRICT LIABILITY, CONTRIBUTION, BREACH OF WARRANTY, OR OTHER LEGAL EQUITABLE
- * THEORY ANY DIRECT OR INDIRECT DAMAGES OR EXPENSES INCLUDING BUT NOT LIMITED
- * TO ANY INCIDENTAL, SPECIAL, INDIRECT, PUNITIVE OR CONSEQUENTIAL DAMAGES, LOST
- * PROFITS OR LOST DATA, COST OF PROCUREMENT OF SUBSTITUTE GOODS, TECHNOLOGY,
- * SERVICES, OR ANY CLAIMS BY THIRD PARTIES (INCLUDING BUT NOT LIMITED TO ANY
- * DEFENSE THEREOF), OR OTHER SIMILAR COSTS.
- *
- * Should you have any questions regarding your right to use this Software,
- * contact MbientLab Inc, at www.mbientlab.com.
- */
-
 package com.mbientlab.metawear.tutorial.multimw;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.res.Configuration;
-import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -87,8 +54,6 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         presetViewHolder.total_dur.setText("" + pList.get(i).getNumCycles());
         presetViewHolder.on_dur.setText("" + pList.get(i).getOn_time());
         presetViewHolder.off_dur.setText("" + pList.get(i).getOff_time());
-//        presetViewHolder.gyro_sample.setText("" + pList.get(i).getGyro_sample());
-//        presetViewHolder.accel_sample.setText("" + pList.get(i).getAccel_sample());
         presetViewHolder.intensity.setText("" + pList.get(i).getIntensity());
         presetViewHolder.set_default_switch.setChecked(pList.get(i).isDefault());
         presetViewHolder.customCSV.setChecked(!pList.get(i).isFromCSV());
@@ -121,6 +86,10 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         }
     }
 
+    /**
+     * get the length of the list
+     * @return the length of the list
+     */
     @Override
     public int getItemCount() {
         if(pList == null) {
@@ -129,6 +98,10 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
         return pList.size();
     }
 
+    /**
+     * fetch presets from the database
+     * @param p_list
+     */
     public void setPresets(List<Preset> p_list) {
         pList = p_list;
         notifyDataSetChanged();
@@ -137,7 +110,7 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     class SensorViewHolder extends RecyclerView.ViewHolder {
         TextView total_label, on_label, off_label, csv_text, intens_label;
         Button delete_button;
-        EditText presetName, total_dur, on_dur, off_dur, accel_sample, gyro_sample, intensity;
+        EditText presetName, total_dur, on_dur, off_dur, intensity;
         RadioButton radioCSV, customCSV;
         Switch set_default_switch;
         Spinner spinner;
@@ -159,9 +132,6 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
             csv_text = itemView.findViewById(R.id.current_file_text);
             spinner = itemView.findViewById(R.id.csv_spinner);
             retrieveCSVs(spinner);
-
-//            accel_sample = itemView.findViewById(R.id.text_sample_accel);
-//            gyro_sample = itemView.findViewById(R.id.text_sample_gyro);
             set_default_switch = itemView.findViewById(R.id.set_default_switch);
 
             set_default_switch.setOnClickListener(view -> {
@@ -302,35 +272,14 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
                 public void onTextChanged(CharSequence s, int start,
                                           int before, int count) {}
             });
-//            accel_sample.addTextChangedListener(new TextWatcher() {
-//                public void afterTextChanged(Editable s) {
-//                    Preset p = pList.get(getAdapterPosition());
-//                    try {
-//                        p.setAccel_sample(Float.parseFloat(s.toString()));
-//                        updatePreset(p);
-//                    } catch(NumberFormatException ignored) {}
-//                }
-//                public void beforeTextChanged(CharSequence s, int start,
-//                                              int count, int after) {}
-//                public void onTextChanged(CharSequence s, int start,
-//                                          int before, int count) {}
-//            });
-//            gyro_sample.addTextChangedListener(new TextWatcher() {
-//                public void afterTextChanged(Editable s) {
-//                    Preset p = pList.get(getAdapterPosition());
-//                    try {
-//                        p.setGyro_sample(Float.parseFloat(s.toString()));
-//                        updatePreset(p);
-//                    } catch(NumberFormatException ignored) {}
-//                }
-//                public void beforeTextChanged(CharSequence s, int start,
-//                                              int count, int after) {}
-//                public void onTextChanged(CharSequence s, int start,
-//                                          int before, int count) {}
-//            });
         }
     }
 
+    /**
+     * update the CSV file connected to the preset
+     * @param p the preset to update
+     * @param filename the name of the CSV file that will be associated with the preset
+     */
     public void updateCSVFileInPreset(Preset p, String filename) {
         AppExecutors.getInstance().diskIO().execute(() -> {
             HapticCSV h = database.hDao().loadCSVFileByName(filename);
@@ -344,11 +293,19 @@ public class PresetAdapter extends RecyclerView.Adapter<PresetAdapter.SensorView
     });
     }
 
+    /**
+     * update the record of a preset in the database
+     * @param p the preset to update
+     */
     public void updatePreset(Preset p) {
             AppExecutors.getInstance().diskIO().execute(() -> database.pDao().updatePreset(p));
 }
 
-public void updateDefault(Preset p) {
+    /**
+     * mark the new default preset and remove the old one
+     * @param p the preset to be made default
+     */
+    public void updateDefault(Preset p) {
     AppExecutors.getInstance().diskIO().execute(() -> {
         Preset d = database.pDao().getDefaultPreset();
         d.setDefault(false);
@@ -358,10 +315,18 @@ public void updateDefault(Preset p) {
     });
 }
 
+    /**
+     * delete the preset from the database
+     * @param p the preset to be deleted
+     */
     public void deletePreset(Preset p) {
         AppExecutors.getInstance().diskIO().execute(() -> database.pDao().deletePreset(p));
     }
 
+    /**
+     * fetch the list of CSV files that have been uploaded to the database
+     * @param spinner the spinner that will hold the CSV files
+     */
     public void retrieveCSVs(Spinner spinner) {
         AppExecutors.getInstance().diskIO().execute(() -> {
             List<String> csvs = database.hDao().loadAllCSVFileNames();
@@ -374,7 +339,5 @@ public void updateDefault(Preset p) {
             });
         });
     }
-
-
 
 }

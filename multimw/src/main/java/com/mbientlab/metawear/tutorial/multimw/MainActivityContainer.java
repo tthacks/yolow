@@ -27,6 +27,9 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Objects;
 
+/**
+ * The main activity of the app that contains all of the fragments and views displayed.
+ */
 public class MainActivityContainer extends AppCompatActivity {
     public static final int REQUEST_START_BLE_SCAN= 1;
     public static final int PICKFILE_REQUEST_CODE = 2;
@@ -92,6 +95,12 @@ public class MainActivityContainer extends AppCompatActivity {
 
     }
 
+    /**
+     * Logic after returning from either a bluetooth scan or a CSV file selection
+     * @param requestCode identifies if the act returned was a scan or a file search
+     * @param resultCode success or failure
+     * @param data the data returned from the other activity
+     */
     @SuppressLint("NewApi")
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -121,6 +130,12 @@ public class MainActivityContainer extends AppCompatActivity {
         }
     }
 
+    /**
+     * read a CSV file and parse it
+     * @param uri the path of the file
+     * @return a HapticCSV object containing the data from the CSV file
+     * @throws IOException if the file does not exist
+     */
     private HapticCSV readTextFromUri(Uri uri) throws IOException {
         StringBuilder onTime = new StringBuilder();
         StringBuilder offTime = new StringBuilder();
@@ -156,22 +171,43 @@ public class MainActivityContainer extends AppCompatActivity {
         return new HapticCSV(uri.getLastPathSegment(), onTime.toString(), offTime.toString(), intensity.toString());
     }
 
+    /**
+     * fetch the hardware objects of the sensors
+     * @return
+     */
     public static HashMap<String, MetaWearBoard> getStateToBoards() {
         return stateToBoards;
     }
 
+    /**
+     * add a new hardware object to the list of connected sensors
+     * @param address the UID of the sensor
+     * @param board the hardware object added to the list
+     */
     public static void addStateToBoards(String address, MetaWearBoard board) {
         stateToBoards.put(address, board);
     }
 
+    /**
+     * fetch the list of collected sensors
+     * @return
+     */
     public static HashMap<String, SensorDevice> getDeviceStates() {
         return deviceStates;
     }
 
+    /**
+     * add a sensor to the collection
+     * @param s the sensor to be added
+     */
     public static void addDeviceToStates(SensorDevice s) {
         deviceStates.put(s.getUid(), s);
     }
 
+    /**
+     * add a CSV file to the database after uploading it
+     * @param h the hapticCSV object to add
+     */
     private void insertIntoCSVDb(HapticCSV h){
         AppExecutors.getInstance().diskIO().execute(() -> database.hDao().insertCSVFile(h));
     }

@@ -20,6 +20,12 @@ public class SensorDevice {
     private float y_loc;
     private TextView view;
 
+    /**
+     * This object carries the data for everything about the sensors except for the hardware
+     * @param uid the unique ID of the sensor, printed on the side of the sensor
+     * @param friendlyName the name the user has assigned to the device
+     * @param context the context of the app. Used to display the boxes on the human view
+     */
     public SensorDevice(String uid, String friendlyName, Context context) {
 
         this.uid = uid;
@@ -93,7 +99,6 @@ public class SensorDevice {
     public boolean isHapticLocked() {
         return hapticLocked;
     }
-
 
     public BufferedWriter getAccel_writer() {
         return accel_writer;

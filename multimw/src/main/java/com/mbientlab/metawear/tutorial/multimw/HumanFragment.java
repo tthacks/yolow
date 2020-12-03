@@ -36,6 +36,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.builder.filter.Comparison;
 import com.mbientlab.metawear.builder.function.Function1;
 import com.mbientlab.metawear.data.Acceleration;
@@ -68,7 +69,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private static final int REQUEST_START_BLE_SCAN = 1;
     private static final int MOVING_AVERAGE = 50;
     private static final boolean VERBOSE = true;
-    private static boolean streamStarted = false;
     private BtleService.LocalBinder binder;
     private AppDatabase database;
     private boolean isLocked, isRecording;
@@ -105,10 +105,31 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return inflater.inflate(R.layout.fragment_human, container, false);
     }
 
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        retrievePresets();
+        List<SensorDevice> sensors = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
+        for(SensorDevice sensor : sensors) {
+            addSensorBox(sensor);
+        }
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        binder= (BtleService.LocalBinder) service;
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {}
+
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("SetTextI18n")
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
+        // fetch database and default settings
         super.onCreate(savedInstanceState);
         database = AppDatabase.getInstance(getActivity().getApplicationContext());
         fetchDefaultPreset();
@@ -119,7 +140,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         sensorName = view.findViewById(R.id.sensor_name);
         presetSpinner = view.findViewById(R.id.sensor_preset_select);
         retrievePresets();
-
         presetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
@@ -165,9 +185,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 boolean fileSuccessful = createSessionFiles(timestamp);
                 if(fileSuccessful) {
                     for (int x = 0; x < accelModules.size(); x++) {
-                        accelModules.get(x).packedAcceleration().start();
+                        accelModules.get(x).acceleration().start();
                         accelModules.get(x).start();
-                        gyroModules.get(x).packedAngularVelocity().start();
+                        gyroModules.get(x).angularVelocity().start();
                         gyroModules.get(x).start();
                     }
                     isRecording = true;
@@ -190,13 +210,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 lock_button.setEnabled(true);
                 scan_devices_button.setEnabled(true);
                 for(int x = 0; x < accelModules.size(); x++) {
-                    accelModules.get(x).packedAcceleration().stop();
+                    accelModules.get(x).acceleration().stop();
                     accelModules.get(x).stop();
-                    gyroModules.get(x).packedAngularVelocity().stop();
+                    gyroModules.get(x).angularVelocity().stop();
                     gyroModules.get(x).stop();
                 }
                 closeSessionFiles();
-                //  tearDownBoards();
             }
         });
 
@@ -218,6 +237,10 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    /**
+     * Writes the preset patterns to files on recording start
+     * @param dir the directory in which the files are saved
+     */
     private void createPresetFiles(File dir) {
         AppExecutors.getInstance().diskIO().execute(() -> {
             final List<Preset> presetList = database.pDao().loadAllPresets();
@@ -246,6 +269,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    /**
+     * Create the files and FileWriters for the recording session
+     * @param timestamp The time the files were created
+     * @return true if the files were created successfully
+     */
     @RequiresApi(api = Build.VERSION_CODES.O)
     private boolean createSessionFiles(String timestamp) {
 
@@ -322,6 +350,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return true;
     }
 
+    /**
+     * Flushes and closes the file writers and performs cleanup when the recording session has ended.
+     */
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void closeSessionFiles() {
         List<BufferedWriter> accelFiles = new ArrayList<>(accel_files.values());
@@ -340,35 +371,13 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         catch (IOException e) {
             e.printStackTrace();
         }
-        streamStarted = false;
         Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Stream successfully saved.", Snackbar.LENGTH_SHORT).show();
     }
 
-    private void tearDownBoards() {
-        List<MetaWearBoard> boards = new ArrayList<>(MainActivityContainer.getStateToBoards().values());
-        for(MetaWearBoard board : boards) {
-            board.tearDown();
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        retrievePresets();
-        List<SensorDevice> sensors = new ArrayList<>(MainActivityContainer.getDeviceStates().values());
-        for(SensorDevice sensor : sensors) {
-            addSensorBox(sensor);
-        }
-    }
-
-    @Override
-    public void onServiceConnected(ComponentName name, IBinder service) {
-        binder= (BtleService.LocalBinder) service;
-    }
-
-    @Override
-    public void onServiceDisconnected(ComponentName name) {}
-
+    /**
+     * Connect to and configure a new sensor and set up accelerometer and gyroscope data routes
+     * @param btDevice the bluetooth device connected
+     */
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void addNewDevice(BluetoothDevice btDevice) {
         final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), getActivity().getApplicationContext());
@@ -384,7 +393,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
         MainActivityContainer.addDeviceToStates(newDeviceState);
         MainActivityContainer.addStateToBoards(btDevice.getAddress(), newBoard);
-
+        // if the bluetooth connection was lost unexpectedly, due to poor connection or battery loss
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> {
             MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid());
             if(VERBOSE) {
@@ -395,40 +404,29 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Lost connection with sensor " + newDeviceState.getFriendlyName() + "(Id: " + newDeviceState.getUid() + ")", Snackbar.LENGTH_LONG).show();
         })
         );
-
+        // configuring the accelerometer data route
         newBoard.connectAsync().onSuccessTask(task -> {
             Accelerometer a = newBoard.getModule(Accelerometer.class);
+            // accelerometer settings: odr = Output Data Rate (Hz)
             a.configure()
-                    .odr(100)
+                    .odr(25f)
                     .range(4f)
                     .commit();
             accelModules.add(a);
-            return a.packedAcceleration().addRouteAsync(source ->
-                    source.multicast()
-                    .to().map(Function1.RMS).lowpass((byte) MOVING_AVERAGE).filter(Comparison.GTE, 1).stream((data, env) -> sendHapticFromPreset(newDeviceState, newBoard, false))
-                    .to().stream((data, env) -> {
-                        try {
-                            newDeviceState.getAccel_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    })
-                    .end());
+            return a.acceleration().addRouteAsync(source ->
+                    processAccel(source, newDeviceState, newBoard));
+            // configuring the gyroscope data route
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
+                // gyroscope settings: odr = Ouptut Data Rate (Hz)
                 g.configure()
-                        .odr(GyroBmi160.OutputDataRate.ODR_100_HZ)
+                        .odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
                         .commit();
                 gyroModules.add(g);
-            return g.packedAngularVelocity().addRouteAsync(source ->
-                    source.stream((data, ev) -> {
-                        try {
-                            newDeviceState.getGyro_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }));
+            return g.angularVelocity().addRouteAsync(source ->
+                    processGyro(source, newDeviceState, newBoard));
         }).continueWith((Continuation<Route, Void>) task -> {
+            // the connection was faulty, try again. If problem persists, reset bluetooth on the device
             if (task.isFaulted()) {
                 if(VERBOSE) {
                     Log.w("yolow", "Failed to configure app", task.getError());
@@ -451,6 +449,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     });
                 }
             }
+            // connection was completely successful and ready to record
             else {
                 newDeviceState.setConnecting(false);
                 newDeviceState.getView().setBackgroundResource(R.color.sensorBoxConnected);
@@ -462,26 +461,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
-//    @RequiresApi(api = Build.VERSION_CODES.O)
-//    private void computeMovingAvg(String uid, Data data, Queue<Double> queue) {
-//        double runningAvg = runningAvgs.get(uid);
-//        double newVal = Math.sqrt(Math.pow(data.value(Acceleration.class).x(), 2) + Math.pow(data.value(Acceleration.class).y(), 2) + Math.pow(data.value(Acceleration.class).z(), 2));
-//        queue.add(newVal);
-//        runningAvg += newVal;
-//        if (queue.size() == MOVING_AVERAGE) {
-//            double moving_avg = runningAvg / MOVING_AVERAGE;
-//            if(VERBOSE) {
-//                Log.i("Moving average", "" + moving_avg);
-//            }
-//            if(moving_avg > 2) {
-//            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
-//            }
-//            double val = queue.remove();
-//            runningAvg = runningAvg - val;
-//        }
-//        runningAvgs.replace(uid, runningAvg);
-//    }
-
+    /**
+     * Touch handler for the sensor boxes that appear on the screen.
+     * @param v the sensor box touched
+     * @param event the type of touch that occurred
+     * @return true once the touch has been completed
+     */
     @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
@@ -526,6 +511,12 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return false;
     }
 
+    /**
+     * Drag handler for the boxes that represent the sensors on the screen
+     * @param v The box selected
+     * @param event The type of drag event that happened
+     * @return true once the drag has been completed
+     */
     public boolean onDrag(View v, DragEvent event) {
         if (!isLocked) {
             if(event.getAction() == DragEvent.ACTION_DRAG_STARTED) {
@@ -551,6 +542,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         return false;
     }
 
+    /**
+     * shortens the displayed name
+     * @param s the sensor name
+     * @return the shortened name, if necessary, to display
+     */
     private String truncate(String s) {
         int MAX_LABEL_LENGTH = 10;
         if(s.length() > MAX_LABEL_LENGTH) {
@@ -561,6 +557,10 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         }
     }
 
+    /**
+     * Creates a new sensor box when a new device is connected
+     * @param s The device that has just been connected
+     */
     @SuppressLint("ClickableViewAccessibility")
     private void addSensorBox(SensorDevice s) {
         ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
@@ -581,6 +581,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         constraintLayout.addView(t);
     }
 
+    /**
+     * retrieves the saved presets from the preset page
+     */
     private void retrievePresets() {
         AppExecutors.getInstance().diskIO().execute(() -> {
                 final List<String> p_list = database.pDao().loadAllPresetNames();
@@ -594,6 +597,9 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    /**
+     * retrieves the preset marked as default
+     */
     private void fetchDefaultPreset() {
         AppExecutors.getInstance().diskIO().execute(() -> {
             final Preset def = database.pDao().getDefaultPreset();
@@ -604,8 +610,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         });
     }
 
+    /**
+     * Triggers the haptic pattern
+     * @param s the device to vibrate
+     * @param board the hardware component of the device to vibrate
+     * @param fromTouch true if the user triggered this haptic pattern, false if the haptic pattern
+     *                  was triggered by the device itself
+     */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private void sendHapticFromPreset(SensorDevice s, MetaWearBoard board, boolean fromTouch) {
+    public void sendHapticFromPreset(SensorDevice s, MetaWearBoard board, boolean fromTouch) {
         if(s.isHapticLocked()) { //already vibrating - dismiss the secondary haptic quietly
             return;
         }
@@ -668,6 +681,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         }
     }
 
+    /**
+     * Writes the presets generated from CSV files to files in the recording session's folder
+     * @param fileId the ID of the CSV file that will be written
+     * @param fileWriter the fileWriter that will write to the file
+     */
     private void writePresetFromCSV(int fileId, FileWriter fileWriter) {
         AppExecutors.getInstance().diskIO().execute(() -> {
             final HapticCSV file = database.hDao().loadCSVFileById(fileId);
@@ -695,6 +713,11 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             });
     }
 
+    /**
+     * Triggers the haptic motor in a sensor if the sensor is programmed using a CSV file
+     * @param file File pointer to the file recording the haptic records
+     * @param board the hardware of a sensor, carrying the haptic motor
+     */
     private void sendHapticFromCSV(HapticCSV file, MetaWearBoard board) {
                 if(file != null) {
                     String[] onTime = file.getOnTime().split(",");
@@ -723,11 +746,57 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 }
     }
 
-    synchronized void startStream() {
-        if(!streamStarted && isRecording) {
-            Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Streaming successfully started.", Snackbar.LENGTH_SHORT).show();
-            streamStarted = true;
-        }
+    /**
+     * Processing logic for accelerometer data
+     * @param source the data route
+     * @param device the sensor producing the data
+     * @param board the object that manages the hardware of the sensor, such as haptics
+     */
+    private void processAccel(RouteComponent source, SensorDevice device, MetaWearBoard board) {
+        source.multicast()
+//                .to() //chain your function here and remove the comment (//)
+                .to().map(Function1.RMS).lowpass((byte) MOVING_AVERAGE).filter(Comparison.GTE, 1).stream((data, env) -> sendHapticFromPreset(device, board, false))
+                .to().stream((data, env) -> {
+            try {
+                device.getAccel_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }})
+                .end();
     }
+
+    /**
+     * Processing logic for gyroscope data
+     * @param source the data route
+     * @param device the sensor producing the data
+     * @param board the object that manages the hardware of the sensor, such as haptics
+     */
+    private void processGyro(RouteComponent source, SensorDevice device, MetaWearBoard board) {
+        source.multicast()
+//                .to() //chain your function here and remove the comment (//)
+                .to().stream((data, env) -> { //DO NOT DELETE THIS - used to write the sensor data to the file
+            try {
+                device.getGyro_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }})
+                .end();
+    }
+
+    /**Example functions **/
+    // copy and paste these functions between these or write your own!
+    // for more information about data routes, read the documentation from mbientlab:
+    // https://mbientlab.com/androiddocs/latest/data_route.html?highlight=route#handling-data
+
+    // for more examples of functions you can program, see the documentation at
+    // https://mbientlab.com/documents/metawear/android/3/com/mbientlab/metawear/builder/RouteComponent.html
+
+    /**
+     * Calculate the moving average over MOVING_AVERAGE samples
+     */
+//    .map(Function1.RMS).lowpass((byte) MOVING_AVERAGE)
+//            .filter(Comparison.GTE, 1)
+//    .stream((data, env) ->
+//            sendHapticFromPreset(newDeviceState, newBoard, false))
 
 }

@@ -44,6 +44,9 @@ public class ExportFragment extends Fragment {
         retrieveSessions();
     }
 
+    /**
+     * fetch the session list from the database
+     */
     private void retrieveSessions() {
         AppExecutors.getInstance().diskIO().execute(() -> {
             final List<Session> sessionList = database.sDao().loadAllSessions();

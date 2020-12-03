@@ -16,6 +16,9 @@ import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 
 import java.util.List;
 
+/**
+ * this fragment displays the presets in the preset tab
+ */
 public class PresetFragment extends Fragment {
 
     private static final int PICKFILE_REQUEST_CODE = 2;
@@ -36,7 +39,6 @@ public class PresetFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        //TODO: Known bug: recycler does not scroll when >4 items are in it
         RecyclerView recyclerView = view.findViewById(R.id.sessions);
         Button upload_csv_button = view.findViewById(R.id.upload_csv_button);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.getContext()));
@@ -65,6 +67,9 @@ public class PresetFragment extends Fragment {
         retrievePresets();
     }
 
+    /**
+     * fetch the presets from the database and add them to the adapter
+     */
     private void retrievePresets() {
         AppExecutors.getInstance().diskIO().execute(() -> {
             final List<Preset> presetList = database.pDao().loadAllPresets();
