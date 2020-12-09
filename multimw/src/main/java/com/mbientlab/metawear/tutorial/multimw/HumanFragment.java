@@ -12,9 +12,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
-import android.support.annotation.Nullable;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -32,7 +29,9 @@ import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.fragment.app.Fragment;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.android.BtleService;
@@ -50,6 +49,8 @@ import com.mbientlab.metawear.tutorial.multimw.database.AppExecutors;
 import com.mbientlab.metawear.tutorial.multimw.database.HapticCSV;
 import com.mbientlab.metawear.tutorial.multimw.database.Preset;
 import com.mbientlab.metawear.tutorial.multimw.database.Session;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -436,7 +437,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                         Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
                         MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid());
                         MainActivityContainer.getStateToBoards().remove(newDeviceState.getUid());
-                        newDeviceState.getView().setVisibility(View.GONE);
+                        removeView(newDeviceState);
                     });
                 } else {
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), task.getError().getLocalizedMessage(), Snackbar.LENGTH_SHORT).show();
@@ -444,7 +445,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     newBoard.disconnectAsync().continueWith((Continuation<Void, Void>) task1 -> {
                         MainActivityContainer.getDeviceStates().remove(newDeviceState.getUid());
                         MainActivityContainer.getStateToBoards().remove(newDeviceState.getUid());
-                        newDeviceState.getView().setVisibility(View.GONE);
+                        removeView(newDeviceState);
                         return null;
                     });
                 }
@@ -454,7 +455,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 newDeviceState.setConnecting(false);
                 newDeviceState.getView().setBackgroundResource(R.color.sensorBoxConnected);
                 newBoard.getModule(Settings.class).editBleConnParams()
-                        .maxConnectionInterval(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? 11.25f : 7.5f)
+                        .maxConnectionInterval(11.25f)
                         .commit();
             }
             return null;
@@ -579,6 +580,14 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         t.setOnDragListener(this);
         t.setLayoutParams(new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.WRAP_CONTENT, ConstraintLayout.LayoutParams.WRAP_CONTENT ));
         constraintLayout.addView(t);
+    }
+
+    private void removeView(SensorDevice s) {
+        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
+        TextView t = s.getView();
+        if(t.getParent() != null) {
+            ((ConstraintLayout) t.getParent()).removeView(t);
+        }
     }
 
     /**
