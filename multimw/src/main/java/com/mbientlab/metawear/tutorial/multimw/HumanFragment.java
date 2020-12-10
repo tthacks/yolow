@@ -68,7 +68,6 @@ import bolts.Continuation;
 public class HumanFragment extends Fragment implements ServiceConnection, View.OnTouchListener, View.OnDragListener {
 
     private static final int REQUEST_START_BLE_SCAN = 1;
-    private static final int MOVING_AVERAGE = 50;
     private static final boolean VERBOSE = true;
     private BtleService.LocalBinder binder;
     private AppDatabase database;
@@ -126,7 +125,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     public void onServiceDisconnected(ComponentName name) {}
 
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("SetTextI18n")
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
@@ -275,7 +273,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
      * @param timestamp The time the files were created
      * @return true if the files were created successfully
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private boolean createSessionFiles(String timestamp) {
 
         if(presets.size() == 0) {
@@ -354,7 +351,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     /**
      * Flushes and closes the file writers and performs cleanup when the recording session has ended.
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void closeSessionFiles() {
         List<BufferedWriter> accelFiles = new ArrayList<>(accel_files.values());
         List<BufferedWriter> gyroFiles = new ArrayList<>(gyro_files.values());
@@ -379,7 +375,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
      * Connect to and configure a new sensor and set up accelerometer and gyroscope data routes
      * @param btDevice the bluetooth device connected
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
     public void addNewDevice(BluetoothDevice btDevice) {
         final SensorDevice newDeviceState = new SensorDevice(btDevice.getAddress(), btDevice.getName(), getActivity().getApplicationContext());
         if(defaultPreset == null) {
@@ -401,7 +396,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 Log.w("ADDNEWDEVICE", "Lost connection with sensor " + newDeviceState.getFriendlyName() + " (Id: " + newDeviceState.getUid() + ")");
             }
             newDeviceState.getView().setBackgroundResource(R.color.sensorBoxDisconnected);
-            newDeviceState.getView().setTextColor(getResources().getColor(R.color.white));
+            newDeviceState.getView().setTextColor(getResources().getColor(R.color.white, getActivity().getTheme()));
                     Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Lost connection with sensor " + newDeviceState.getFriendlyName() + "(Id: " + newDeviceState.getUid() + ")", Snackbar.LENGTH_LONG).show();
         })
         );
@@ -468,7 +463,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
      * @param event the type of touch that occurred
      * @return true once the touch has been completed
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
         SensorDevice s = MainActivityContainer.getDeviceStates().get(v.getTag().toString());
@@ -583,7 +577,6 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     }
 
     private void removeView(SensorDevice s) {
-        ConstraintLayout constraintLayout = getView().findViewById(R.id.sensor_area);
         TextView t = s.getView();
         if(t.getParent() != null) {
             ((ConstraintLayout) t.getParent()).removeView(t);
@@ -764,7 +757,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     private void processAccel(RouteComponent source, SensorDevice device, MetaWearBoard board) {
         source.multicast()
 //                .to() //chain your function here and remove the comment (//)
-                .to().map(Function1.RMS).lowpass((byte) MOVING_AVERAGE).filter(Comparison.GTE, 1).stream((data, env) -> sendHapticFromPreset(device, board, false))
+                .to().map(Function1.RMS).lowpass((byte) 100).filter(Comparison.GTE, 1).stream((data, env) -> sendHapticFromPreset(device, board, false))
                 .to().stream((data, env) -> {
             try {
                 device.getAccel_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
@@ -802,6 +795,10 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
     /**
      * Calculate the moving average over MOVING_AVERAGE samples
+     * .map(Function1.RMS) turns the data points into values using the root mean square.
+     * .lowpass((byte) 100) calculates the moving average of the previous 100 samples
+     * .filter(Comparison.GTE,1) will compare the average: if it is greater or equal to 1 (GTE) then
+     * it will trigger the code in stream(), which will make the sensor vibrate.
      */
 //    .map(Function1.RMS).lowpass((byte) MOVING_AVERAGE)
 //            .filter(Comparison.GTE, 1)
