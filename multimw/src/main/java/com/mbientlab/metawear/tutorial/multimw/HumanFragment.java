@@ -32,6 +32,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.android.BtleService;
@@ -85,6 +86,7 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
     HashMap<String, BufferedWriter> gyro_files = new HashMap<>();
     HashMap<String, BufferedWriter> accel_files = new HashMap<>();
     FileWriter hapticWriter;
+    //HashMap<String, Data> prevAccelData = new HashMap<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -183,6 +185,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 String timestamp = now.toString().replaceAll(":", ".");
                 boolean fileSuccessful = createSessionFiles(timestamp);
                 if(fileSuccessful) {
+                    // if you want to ONLY run accelerometer or gyroscope for certain sensors,
+                    // this is where you would do it
                     for (int x = 0; x < accelModules.size(); x++) {
                         accelModules.get(x).acceleration().start();
                         accelModules.get(x).start();
@@ -410,7 +414,17 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                     .commit();
             accelModules.add(a);
             return a.acceleration().addRouteAsync(source ->
-                    processAccel(source, newDeviceState, newBoard));
+                    //processAccel(source, newDeviceState, newBoard);
+                    source.multicast()
+//                .to() //chain your function here and remove the comment (//)
+                            .to().map(Function1.RMS).lowpass((byte) 100).filter(Comparison.GTE, 1).stream((data, env) -> sendHapticFromPreset(newDeviceState, newBoard, false))
+                            .to().stream((data, env) -> { // DO NOT REMOVE THIS CODE unless you don't want data to be written to the file
+                        try {
+                            newDeviceState.getAccel_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(Acceleration.class).x() + "," + data.value(Acceleration.class).y() + "," + data.value(Acceleration.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }})
+                            .end());
             // configuring the gyroscope data route
         }).onSuccessTask(task -> {
                 GyroBmi160 g = newBoard.getModule(GyroBmi160.class);
@@ -420,7 +434,17 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                         .commit();
                 gyroModules.add(g);
             return g.angularVelocity().addRouteAsync(source ->
-                    processGyro(source, newDeviceState, newBoard));
+//                    processGyro(source, newDeviceState, newBoard));
+                    source.multicast()
+//                .to() //chain your function here and remove the comment (//)
+                            .to().stream((data, env) -> { //DO NOT DELETE THIS - used to write the sensor data to the file
+                        try {
+                            newDeviceState.getGyro_writer().write(data.timestamp().getTimeInMillis() + "," + data.formattedTimestamp() + ",," + data.value(AngularVelocity.class).x() + "," + data.value(AngularVelocity.class).y() + "," + data.value(AngularVelocity.class).z() + "\n");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }})
+                            .end());
+
         }).continueWith((Continuation<Route, Void>) task -> {
             // the connection was faulty, try again. If problem persists, reset bluetooth on the device
             if (task.isFaulted()) {
@@ -804,5 +828,32 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 //            .filter(Comparison.GTE, 1)
 //    .stream((data, env) ->
 //            sendHapticFromPreset(newDeviceState, newBoard, false))
+
+
+    /**
+     * comparing a data point to the immediate previous datapoint received by the sensor
+     * on clientside instead of sensorside.
+     * Note: this function requires a hashmap called prevAccelData, which you will have to add at
+     * the top of the file. (It is currently commented out, as it is not being used.)
+     */
+//    private void compareAccelToPrevious(String uid, Data data) {
+//        Data prev = prevAccelData.get(uid);
+//        if(prev == null) {
+//            //this is the first data point
+//            prevAccelData.put(uid, data);
+//            return;
+//        }
+//        double x  =Math.pow(prev.value(Acceleration.class).x() - data.value(Acceleration.class).x(), 2);
+//        double y = Math.pow(prev.value(Acceleration.class).y() - data.value(Acceleration.class).y(), 2);
+//        double z = Math.pow(prev.value(Acceleration.class).z() - data.value(Acceleration.class).z(), 2);
+//        double resultant = Math.sqrt(x + y + z);
+//        if(VERBOSE) {
+//            Log.i("Accel resultant", "" + prev.value(Acceleration.class) + ", " + data.value(Acceleration.class) + ": " + resultant);
+//        }
+//        if(resultant > 2) {
+//            sendHapticFromPreset(MainActivityContainer.getDeviceStates().get(uid), MainActivityContainer.getStateToBoards().get(uid), false);
+//        }
+//        prevAccelData.replace(uid, data);
+//    }
 
 }
