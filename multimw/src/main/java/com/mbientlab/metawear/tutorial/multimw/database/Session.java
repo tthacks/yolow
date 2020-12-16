@@ -3,8 +3,6 @@ package com.mbientlab.metawear.tutorial.multimw.database;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-import java.util.Date;
-
 @Entity(tableName = "sessions")
 public class Session {
     @PrimaryKey (autoGenerate = true)

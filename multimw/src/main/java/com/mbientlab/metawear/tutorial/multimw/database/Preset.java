@@ -92,16 +92,8 @@ public class Preset {
         return accel_sample;
     }
 
-    public void setAccel_sample(float accel_sample) {
-        this.accel_sample = accel_sample;
-    }
-
     public float getGyro_sample() {
         return gyro_sample;
-    }
-
-    public void setGyro_sample(float gyro_sample) {
-        this.gyro_sample = gyro_sample;
     }
 
     public Preset(@NonNull String name, boolean fromCSV, int csvFile, boolean isDefault, String csvFileName, int numCycles, float on_time, float off_time, float intensity, float accel_sample, float gyro_sample) {

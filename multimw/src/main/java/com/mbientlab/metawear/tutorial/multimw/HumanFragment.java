@@ -163,9 +163,16 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
 
         Button lock_button = view.findViewById(R.id.button_lock);
         Button record_button = view.findViewById(R.id.button_record);
+        Button clear_button = view.findViewById(R.id.tear_down_button);
         Button scan_devices_button = view.findViewById(R.id.scan_devices_button);
         scan_devices_button.setOnClickListener(v -> getActivity().startActivityForResult(new Intent(getActivity(), ScannerActivity.class), REQUEST_START_BLE_SCAN));
 
+        /**NEW - not fully tested on physical device.
+         * Tears down the boards and sensors in case of an error.
+         */
+        clear_button.setOnClickListener(v -> {
+            tearDownAll();
+        });
         lock_button.setOnClickListener(v -> {
             isLocked = !isLocked;
             if (isLocked) {
@@ -372,7 +379,16 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
         catch (IOException e) {
             e.printStackTrace();
         }
-        Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Stream successfully saved.", Snackbar.LENGTH_SHORT).show();
+        //Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Stream successfully saved.", Snackbar.LENGTH_SHORT).show();
+    }
+
+    private void tearDownAll() {
+        List<MetaWearBoard> all = new ArrayList<>(MainActivityContainer.getStateToBoards().values());
+        for(MetaWearBoard board : all) {
+            board.tearDown();
+        }
+        MainActivityContainer.getStateToBoards().clear();
+        MainActivityContainer.getDeviceStates().clear();
     }
 
     /**
@@ -436,6 +452,8 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
             return g.angularVelocity().addRouteAsync(source ->
 //                    processGyro(source, newDeviceState, newBoard));
                     source.multicast()
+                            .to().count().filter(Comparison.EQ, 2).stream((data,env) ->
+                            Snackbar.make(getActivity().findViewById(R.id.activity_main_layout), "Streaming has started successfully.", Snackbar.LENGTH_SHORT).show())
 //                .to() //chain your function here and remove the comment (//)
                             .to().stream((data, env) -> { //DO NOT DELETE THIS - used to write the sensor data to the file
                         try {
@@ -545,15 +563,15 @@ public class HumanFragment extends Fragment implements ServiceConnection, View.O
                 if(event.getX() == 0.0 && event.getY() == 0) {
                     return true;
                 }
-                float x = event.getX() + 20 - lastSelected.getWidth() / 2;
-                float y = event.getY() - 280;
+                float x = event.getX() -lastSelected.getWidth() / 2;
+                float y = event.getY() - lastSelected.getHeight() / 2 - (2 * getResources().getDimension(R.dimen.bottom_bar_padding));
                 if(y < 0) {
                     y = 0;
                 }
                 if(x < 0) {
                     x = 0;
                 }
-                lastSelected.setX(x - lastSelected.getWidth() / 2);
+                lastSelected.setX(x);
                 lastSelected.setY(y);
                 return true;
             }

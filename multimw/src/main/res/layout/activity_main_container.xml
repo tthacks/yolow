@@ -10,7 +10,7 @@
     <LinearLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/top_bar_padding"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -19,7 +19,7 @@
             android:id="@+id/button_goto_human"
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@color/colorAccent"
             android:text="@string/map" />
@@ -28,7 +28,7 @@
             android:id="@+id/button_goto_settings"
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@color/colorPrimary"
             android:padding="4dp"
@@ -38,7 +38,7 @@
             android:id="@+id/button_goto_exports"
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@color/colorPrimary"
             android:padding="4dp"
